@@ -1,10 +1,19 @@
-# session-hud
+<p align="center">
+  <img src="docs/session-hud.gif" alt="The session-hud pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
+</p>
 
-A live HUD for [Claude Code](https://claude.com/claude-code). It shows how full your context is, what the session costs, how much of your usage limits is left, and what every subagent is doing right now.
+<h1 align="center">Session HUD</h1>
 
-It works in the terminal and in the Claude desktop app's Code tab.
+<p align="center"><code>session-hud</code> shows your context, spend, usage limits and repo status in RPG gauges, and your subagents as a fantasy party around a campfire.</p>
 
-<img src="docs/pane.png" width="440" alt="The session pane: context, spend, limits, repo status and running subagents">
+<p align="center">
+  <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/Claude_Code-plugin-D97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code plugin"></a>
+  <img src="https://img.shields.io/badge/built_on-v2.1.288-555555?style=flat-square" alt="Built on Claude Code 2.1.288">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License: MIT"></a>
+</p>
+
+<p align="center"><sub>Works in the terminal and in the Claude desktop app's Code tab. Type <code>/hud</code> to show or hide the pane.</sub></p>
 
 ## What it shows
 
@@ -17,20 +26,18 @@ It works in the terminal and in the Claude desktop app's Code tab.
 
 **In the side pane** (`/hud` opens or closes it):
 - **Context:** a gauge with a tick every 10% of the window. On windows larger than 200K, a notch marks 200K tokens.
-
-Every bar is a framed gauge. Its colour is a gem that changes as it fills: emerald, topaz, amber, ruby, then crimson.
 - **Stats:** the amount spent, the time elapsed, and the tokens in and out
 - **Limits:** each usage limit the API reports, such as the 5-hour and weekly windows
 - **Repo:** the model, the branch, and the staged, modified and new files, with +/− lines
 - **Agents:** the subagents as a party around a campfire, then a list of what each one is doing
+
+Every bar is a framed gauge. Its colour is a gem that changes as it fills: emerald, topaz, amber, ruby, then crimson.
 
 The pane opens on its own when a session starts and when a subagent starts.
 
 ## The party
 
 Each subagent is drawn as a voxel Clawd. Each agent type has its own role in a fantasy party.
-
-<img src="docs/clawds.png" width="760" alt="Six Clawd roles in five states">
 
 | Agent type | Role | Motion while it runs |
 |---|---|---|
