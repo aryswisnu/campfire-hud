@@ -1,6 +1,6 @@
 {
   "name": "campfire-hud",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A live HUD for Claude Code: context, spend, usage limits and repo status in RPG gauges, and your subagents as a fantasy party around a campfire.",
   "author": {
     "name": "aryswisnu",

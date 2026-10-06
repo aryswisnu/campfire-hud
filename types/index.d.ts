@@ -16,8 +16,11 @@ export type AgentRun = {
   costUsd?: number
 }
 
-/** `selectedId`: the running agent the list shows in full; absent, the newest. */
-export type Panel = { isDoneCollapsed: boolean; selectedId?: string }
+/**
+ * `selectedId`: the running agent the list shows in full; absent, the newest.
+ * `isLeft`: battery mode, where every bar shows the share left instead of the share used.
+ */
+export type Panel = { isDoneCollapsed: boolean; selectedId?: string; isLeft?: boolean }
 
 export type Tokens = { input: number; output: number }
 

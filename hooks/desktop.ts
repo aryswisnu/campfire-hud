@@ -88,25 +88,35 @@ export const modelName = (id: string): string => {
 export const limitName = (kind: string): string =>
   kind === 'five_hour' ? '5-hour limit' : kind === 'seven_day' ? 'Weekly limit' : kind === 'spend_limit' ? 'Spend limit' : kind.replace(/_/g, ' ')
 
-// The context window as a gauge; a notch marks 200K on larger windows, where
-// long-context pricing starts.
+/** What a bar shows: the share used, or in battery mode the share left. */
+export const shownPct = (used: number, isLeft: boolean): number => {
+  const u = Math.max(0, Math.min(100, used))
+  return isLeft ? 100 - u : u
+}
+export const pctText = (used: number, isLeft: boolean): string => `${Math.round(shownPct(used, isLeft))}%${isLeft ? ' left' : ''}`
+// A token count's place on a bar; in battery mode the bar drains from the right, so the place mirrors.
+const markX = (x: number, w: number, tokens: number, window: number, isLeft: boolean): number =>
+  x + ((isLeft ? window - tokens : tokens) / window) * w
+
 // Where auto-compact runs, as an amber marker; the label sits inside the gauge's width.
-const compactMark = (x: number, y: number, w: number, h: number, compactAt: number | undefined, window: number, label: boolean): string => {
-  if (!compactAt || compactAt >= window) return ''
-  const cx = x + (compactAt / window) * w
+const compactMark = (x: number, y: number, w: number, h: number, c: ContextFigures, isLeft: boolean, label: boolean): string => {
+  if (!c.compactAt || c.compactAt >= c.window) return ''
+  const cx = markX(x, w, c.compactAt, c.window, isLeft)
   const anchor = cx > x + w - 40 ? 'end' : cx < x + 40 ? 'start' : 'middle'
-  return `<rect x="${cx - 1}" y="${y - 4}" width="2" height="${h + 7}" fill="${STATUS.moderate}"/>${label ? t(cx, y + h + 14, 'i', 10, 'auto-compact', ` text-anchor="${anchor}" style="fill:${STATUS.moderate}"`) : ''}`
+  return `<rect x="${(cx - 1).toFixed(1)}" y="${y - 4}" width="2" height="${h + 7}" fill="${STATUS.moderate}"/>${label ? t(cx, y + h + 14, 'i', 10, 'auto-compact', ` text-anchor="${anchor}" style="fill:${STATUS.moderate}"`) : ''}`
 }
 
-const contextGauge = (x: number, y: number, w: number, h: number, c: ContextFigures, color: string): string => {
-  const notch = c.window > 200_000 ? x + (200_000 / c.window) * w : -1
-  const compactX = c.compactAt ? x + (c.compactAt / c.window) * w : -1
+// The context window as a gauge; a notch marks 200K on larger windows, where
+// long-context pricing starts.
+const contextGauge = (x: number, y: number, w: number, h: number, c: ContextFigures, color: string, isLeft: boolean): string => {
+  const notch = c.window > 200_000 ? markX(x, w, 200_000, c.window, isLeft) : -1
+  const compactX = c.compactAt ? markX(x, w, c.compactAt, c.window, isLeft) : -1
   // The 200K label gives way when the auto-compact label would overlap it.
   const notchLabel = notch > 0 && Math.abs(notch - compactX) > 70 ? t(notch, y + h + 14, 'm', 10, '200K', ' text-anchor="middle"') : ''
   return (
-    gauge(x, y, w, h, c.percent, color) +
+    gauge(x, y, w, h, shownPct(c.percent, isLeft), color) +
     (notch > 0 ? `<rect class="m" x="${notch - 0.5}" y="${y - 4}" width="1" height="${h + 7}"/>${notchLabel}` : '') +
-    compactMark(x, y, w, h, c.compactAt, c.window, true)
+    compactMark(x, y, w, h, c, isLeft, true)
   )
 }
 
@@ -115,17 +125,18 @@ type ContextFigures = { percent: number; tokens: number; window: number; compact
 
 export const CONTEXT_H = 90
 
-export const contextSvg = (W: number, c: ContextFigures): string => {
+export const contextSvg = (W: number, c: ContextFigures, isLeft = false): string => {
   const lv = levelOf(c.percent)
   const win = c.window >= 1_000_000 ? `${c.window / 1_000_000}M` : `${Math.round(c.window / 1000)}K`
+  const tokens = isLeft ? `${fmtTokens(Math.max(0, c.window - c.tokens))} of ${win} left` : `${fmtTokens(c.tokens)} of ${win}`
   return svg(
     W,
     CONTEXT_H,
     `${t(0, 15, 'm', 12, 'Context')}
 ${t(W, 15, 'i', 12, lv.word, ` text-anchor="end" style="fill:${lv.color}" font-weight="600"`)}
-<text x="0" y="45" font-size="30" font-weight="600" class="i">${Math.round(c.percent)}<tspan font-size="16" class="m">%</tspan></text>
-${t(W, 45, 'm', 12, `${fmtTokens(c.tokens)} of ${win}`, ' text-anchor="end"')}
-${contextGauge(0, 58, W, 14, c, lv.color)}`,
+<text x="0" y="45" font-size="30" font-weight="600" class="i">${Math.round(shownPct(c.percent, isLeft))}<tspan font-size="16" class="m">%${isLeft ? ' left' : ''}</tspan></text>
+${t(W, 45, 'm', 12, tokens, ' text-anchor="end"')}
+${contextGauge(0, 58, W, 14, c, lv.color, isLeft)}`,
   )
 }
 
@@ -144,7 +155,7 @@ type Limit = { kind: string; percentUsed: number }
 
 export const LIMITS_H = 30
 
-export const limitsSvg = (W: number, limits: Limit[]): string => {
+export const limitsSvg = (W: number, limits: Limit[], isLeft = false): string => {
   const gap = 16
   const each = (W - gap * (limits.length - 1)) / Math.max(1, limits.length)
   const body = limits
@@ -152,8 +163,8 @@ export const limitsSvg = (W: number, limits: Limit[]): string => {
       const x = i * (each + gap)
       const pct = Math.max(0, Math.min(100, l.percentUsed))
       const color = levelOf(pct).color
-      return `${t(x, 12, 'm', 11, limitName(l.kind))}${t(x + each, 12, 'i', 11, `${Math.round(l.percentUsed)}%`, ' text-anchor="end"')}
-${gauge(x, 19, each, 8, pct, color)}`
+      return `${t(x, 12, 'm', 11, limitName(l.kind))}${t(x + each, 12, 'i', 11, pctText(l.percentUsed, isLeft), ' text-anchor="end"')}
+${gauge(x, 19, each, 8, shownPct(pct, isLeft), color)}`
     })
     .join('')
   return svg(W, LIMITS_H, body)
@@ -184,26 +195,27 @@ export const BAND_LIMITS: [string, string][] = [
   ['seven_day', 'Week'],
 ]
 
-const limitSlot = (x: number, label: string, l: Limit | undefined): string => {
+const limitSlot = (x: number, label: string, l: Limit | undefined, isLeft: boolean): string => {
   const barW = 44
   const pct = l ? Math.max(0, Math.min(100, l.percentUsed)) : 0
-  return `${t(x, 16, 'm', 12, label)}${gauge(x + 38, 8, barW, 8, pct, levelOf(pct).color, 5)}${t(x + 38 + barW + 6, 16, 'i', 12, l ? `${Math.round(l.percentUsed)}%` : '—', ' font-weight="600"')}`
+  return `${t(x, 16, 'm', 12, label)}${gauge(x + 38, 8, barW, 8, l ? shownPct(pct, isLeft) : 0, levelOf(pct).color, 5)}${t(x + 38 + barW + 6, 16, 'i', 12, l ? pctText(l.percentUsed, isLeft) : '—', ' font-weight="600"')}`
 }
 
-export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[]): string => {
+export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false): string => {
   const lv = levelOf(c.percent)
   // The strip gives way to the usage slots and the head figures on a narrow band.
-  const room = W - 130 * BAND_LIMITS.length - 200
+  // A slot is wider in battery mode, for the word "left".
+  const SLOT = isLeft ? 160 : 130
+  const room = W - SLOT * BAND_LIMITS.length - 200
   const stripW = room >= 40 ? Math.min(160, room) : 0
-  const strip = stripW > 0 ? gauge(0, 6, stripW, 12, c.percent, lv.color) + compactMark(0, 6, stripW, 12, c.compactAt, c.window, false) : ''
+  const strip = stripW > 0 ? gauge(0, 6, stripW, 12, shownPct(c.percent, isLeft), lv.color) + compactMark(0, 6, stripW, 12, c, isLeft, false) : ''
   const x0 = stripW ? stripW + 10 : 0
-  const SLOT = 130
   const slotsX = W - SLOT * BAND_LIMITS.length
-  const slots = BAND_LIMITS.map(([kind, label], i) => limitSlot(slotsX + SLOT * i, label, limits.find(l => l.kind === kind))).join('')
+  const slots = BAND_LIMITS.map(([kind, label], i) => limitSlot(slotsX + SLOT * i, label, limits.find(l => l.kind === kind), isLeft)).join('')
 
   // Optional parts drop from the end until the left side clears the usage slots.
-  const head = `<tspan class="i" font-weight="600">${Math.round(c.percent)}%</tspan><tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan><tspan dx="16" class="i">$${cost.toFixed(2)}</tspan>`
-  const headChars = `${Math.round(c.percent)}% ${lv.word} $${cost.toFixed(2)}`.length
+  const head = `<tspan class="i" font-weight="600">${pctText(c.percent, isLeft)}</tspan><tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan><tspan dx="16" class="i">$${cost.toFixed(2)}</tspan>`
+  const headChars = `${pctText(c.percent, isLeft)} ${lv.word} $${cost.toFixed(2)}`.length
   const optional = [modelName(model), branch ? fit(branch, 12, W * 0.25) : ''].filter(Boolean)
   const widthOf = (parts: string[]) => (headChars + parts.join('').length) * 7 + 22 + parts.length * 16
   while (optional.length && x0 + widthOf(optional) + 16 > slotsX) optional.pop()

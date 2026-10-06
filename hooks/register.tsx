@@ -37,7 +37,9 @@ import {
   LIMITS_H,
   limitsSvg,
   modelName,
+  pctText,
   repoSvg,
+  shownPct,
   statsSvg,
   STATUS,
 } from './desktop'
@@ -126,6 +128,14 @@ async function refreshCompact($: EngineInterface): Promise<void> {
   await update($, compactAt, () => at)
 }
 
+// Battery mode is saved across sessions.
+const MODE_KEY = 'gaugeMode'
+
+async function setLeft($: EngineInterface, isLeft: boolean): Promise<void> {
+  await update($, panel, v => ({ ...v, isLeft }))
+  await $.store.set(MODE_KEY, isLeft ? 'left' : 'used')
+}
+
 async function togglePane($: EngineInterface): Promise<boolean> {
   if ((await $.ui.panes()).some(p => p.id === PANE)) {
     await $.ui.close({ id: PANE })
@@ -138,7 +148,8 @@ async function togglePane($: EngineInterface): Promise<boolean> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    await $.command.register({ name: 'hud', description: 'Show or hide the session pane: context, spend, repo and subagents' })
+    await $.command.register({ name: 'hud', description: 'Show or hide the session pane; /hud left or /hud used switches every bar' })
+    if ((await $.store.get(MODE_KEY).catch(() => undefined)) === 'left') await update($, panel, v => ({ ...v, isLeft: true }))
     void $.ui.open({ id: PANE, title: TITLE })
     void refreshRepo($)
     void refreshCompact($)
@@ -160,7 +171,14 @@ export const register: Register = on => {
     return started
   })
 
-  on('command.run', { command: 'hud' }, async $ => ({ text: (await togglePane($)) ? 'Session pane opened.' : 'Session pane closed.' }))
+  on('command.run', { command: 'hud' }, async ($, e) => {
+    const mode = e.args.trim().toLowerCase()
+    if (mode === 'left' || mode === 'used') {
+      await setLeft($, mode === 'left')
+      return { text: mode === 'left' ? 'The bars now show what is left.' : 'The bars now show what is used.' }
+    }
+    return { text: (await togglePane($)) ? 'Session pane opened.' : 'Session pane closed.' }
+  })
 
   on('turn.step', async function* ($, e, next) {
     const result = yield* next(e)
@@ -244,13 +262,14 @@ export const register: Register = on => {
     const list = await read($, agents)
     const pct = usage.context.percent ?? 0
     const compact = (await read($, compactAt)) ?? undefined
-    const compactPct = compact ? (compact / usage.context.window) * 100 : undefined
+    const { isLeft = false } = await read($, panel)
+    const compactPct = compact ? shownPct((compact / usage.context.window) * 100, isLeft) : undefined
     const lv = levelOf(pct)
     const cost = usage.cost?.usd ?? 0
     const running = list.filter(a => a.status === 'running').length
     const bandLimits = BAND_LIMITS.map(([kind, label]) => {
       const l = usage.rateLimits.find(x => x.kind === kind)
-      return `${label} ${l ? `${Math.round(l.percentUsed)}%` : '—'}`
+      return `${label} ${l ? pctText(l.percentUsed, isLeft) : '—'}`
     }).join('  ')
     const toggle = (
       <Button
@@ -267,8 +286,8 @@ export const register: Register = on => {
       return (
         <Box flexDirection="row" alignItems="center" gap={1}>
           <Svg
-            source={bandSvg(W, model, { percent: pct, tokens: usage.context.tokens ?? 0, window: usage.context.window, compactAt: compact }, cost, r?.branch ?? '', usage.rateLimits)}
-            alt={`Context ${Math.round(pct)}%, ${lv.word}. $${cost.toFixed(2)} spent. ${bandLimits}`}
+            source={bandSvg(W, model, { percent: pct, tokens: usage.context.tokens ?? 0, window: usage.context.window, compactAt: compact }, cost, r?.branch ?? '', usage.rateLimits, isLeft)}
+            alt={`Context ${pctText(pct, isLeft)}, ${lv.word}. $${cost.toFixed(2)} spent. ${bandLimits}`}
             width={W}
             height={24}
           />
@@ -281,7 +300,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" gap={2}>
         <Text>
-          {termGauge(Text, pct, width, lv.color, compactPct)} <Text bold>{Math.round(pct)}%</Text> <Text color={lv.color}>{lv.word}</Text>
+          {termGauge(Text, shownPct(pct, isLeft), width, lv.color, compactPct)} <Text bold>{pctText(pct, isLeft)}</Text> <Text color={lv.color}>{lv.word}</Text>
         </Text>
         <Text>${cost.toFixed(2)}</Text>
         <Text dimColor>{modelName(model)}</Text>
@@ -306,6 +325,12 @@ export const register: Register = on => {
     const cost = usage.cost?.usd ?? 0
     const lv = levelOf(ctx.percent)
     const p: Panel = await read($, panel)
+    const isLeft = p.isLeft ?? false
+    const modeToggle = (
+      <Box key="mode" flexDirection="row" justifyContent="flex-end">
+        <Button key="gauge-mode" plain dimColor label={isLeft ? 'Show used' : 'Show left'} onPress={() => setLeft($, !isLeft)} />
+      </Box>
+    )
     const running = list.filter(a => a.status === 'running').reverse()
     const finished = list.filter(a => a.status !== 'running').reverse().slice(0, 12)
     const totals = totalsOf(list, at)
@@ -334,11 +359,12 @@ export const register: Register = on => {
       const W = Math.max(240, Math.min(900, (e.props.bodyColumns || 46) * 8 - 8))
       return (
         <Box flexDirection="column" gap={2}>
-          <Svg source={contextSvg(W, ctx)} alt={`Context ${Math.round(ctx.percent)}% used, ${lv.word}`} width={W} height={CONTEXT_H} />
+          {modeToggle}
+          <Svg source={contextSvg(W, ctx, isLeft)} alt={`Context ${pctText(ctx.percent, isLeft)}${isLeft ? '' : ' used'}, ${lv.word}`} width={W} height={CONTEXT_H} />
           <Svg source={statsSvg(W, cost, at - usage.startedAt, t)} alt={`$${cost.toFixed(2)} spent, ${fmtDuration(at - usage.startedAt)} elapsed`} width={W} height={46} />
           {usage.rateLimits.length > 0 && (
             <Svg
-              source={limitsSvg(W, usage.rateLimits)}
+              source={limitsSvg(W, usage.rateLimits, isLeft)}
               alt={usage.rateLimits.map(l => `${limitName(l.kind)} ${Math.round(l.percentUsed)}%`).join(', ')}
               width={W}
               height={LIMITS_H}
@@ -357,7 +383,7 @@ export const register: Register = on => {
               {selected && (
                 <Svg
                   key={`detail-${selected.id}`}
-                  source={detailSvg(W, selected, at, nameOf(selected))}
+                  source={detailSvg(W, selected, at, nameOf(selected), isLeft)}
                   alt={`${nameOf(selected)}: ${selected.description}, ${ctxOf(selected)}% context, ${selected.lastTool}`}
                   width={W}
                   height={DETAIL_H}
@@ -367,7 +393,7 @@ export const register: Register = on => {
                 .filter(a => a !== selected)
                 .map(a => (
                   <Box key={a.id} flexDirection="row" alignItems="center" gap={1}>
-                    <Svg source={lineSvg(W - 56, a, at, nameOf(a))} alt={`${nameOf(a)}: ${a.description}, ${ctxOf(a)}% context`} width={W - 56} height={LINE_H} />
+                    <Svg source={lineSvg(W - 56, a, at, nameOf(a), isLeft)} alt={`${nameOf(a)}: ${a.description}, ${ctxOf(a)}% context`} width={W - 56} height={LINE_H} />
                     <Button key={`open-${a.id}`} plain dimColor label="Open" onPress={() => update($, panel, v => ({ ...v, selectedId: a.id }))} />
                   </Box>
                 ))}
@@ -404,10 +430,10 @@ export const register: Register = on => {
           </Text>
           <Text wrap="truncate-end">
             {'  '}
-            {termGauge(Text, c, barW, a.status === 'running' && c >= 70 ? STATUS.moderate : color)}
+            {termGauge(Text, shownPct(c, isLeft), barW, a.status === 'running' && c >= 70 ? STATUS.moderate : color)}
             <Text dimColor>
               {' '}
-              ctx {c}% · {fmtK(a.contextTokens)} ≈{fmtCost(a.costUsd ?? 0)} {fmtTime((a.endedAt ?? at) - a.startedAt)}
+              ctx {pctText(c, isLeft)} · {fmtK(a.contextTokens)} ≈{fmtCost(a.costUsd ?? 0)} {fmtTime((a.endedAt ?? at) - a.startedAt)}
             </Text>
           </Text>
           {a.status === 'running' && a.lastTool !== '' && (
@@ -422,14 +448,17 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column" gap={1}>
+        {modeToggle}
         <Box flexDirection="column">
           <Text>
             <Text dimColor>Context </Text>
-            <Text bold>{Math.round(ctx.percent)}%</Text> <Text color={lv.color}>{lv.word}</Text>
-            <Text dimColor>  {fmtTokens(ctx.tokens)} of {fmtTokens(ctx.window)}</Text>
+            <Text bold>{pctText(ctx.percent, isLeft)}</Text> <Text color={lv.color}>{lv.word}</Text>
+            <Text dimColor>
+              {isLeft ? `  ${fmtTokens(Math.max(0, ctx.window - ctx.tokens))} of ${fmtTokens(ctx.window)} left` : `  ${fmtTokens(ctx.tokens)} of ${fmtTokens(ctx.window)}`}
+            </Text>
             {ctx.compactAt !== undefined && <Text color={STATUS.moderate}>{`  auto-compact at ${fmtTokens(ctx.compactAt)}`}</Text>}
           </Text>
-          {termGauge(Text, ctx.percent, width, lv.color, ctx.compactAt ? (ctx.compactAt / ctx.window) * 100 : undefined)}
+          {termGauge(Text, shownPct(ctx.percent, isLeft), width, lv.color, ctx.compactAt ? shownPct((ctx.compactAt / ctx.window) * 100, isLeft) : undefined)}
         </Box>
         <Box flexDirection="column">
           <Text>
@@ -438,7 +467,7 @@ export const register: Register = on => {
           </Text>
           <Text dimColor>
             {fmtTokens(t.input)} in  {fmtTokens(t.output)} out
-            {usage.rateLimits.map(l => `   ${limitName(l.kind)} ${Math.round(l.percentUsed)}%`).join('')}
+            {usage.rateLimits.map(l => `   ${limitName(l.kind)} ${pctText(l.percentUsed, isLeft)}`).join('')}
           </Text>
         </Box>
         <Box flexDirection="column">

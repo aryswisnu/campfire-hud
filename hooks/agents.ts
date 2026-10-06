@@ -1,5 +1,5 @@
 import type { AgentRun } from '../types'
-import { fit, GAUGE_CSS, gauge, modelName, xml } from './desktop'
+import { fit, GAUGE_CSS, gauge, modelName, shownPct, xml } from './desktop'
 import { avatar, costumeColor, costumeOf, roleName, SPRITE_CSS } from './sprites'
 import type { Mood } from './sprites'
 
@@ -155,7 +155,7 @@ export const summarySvg = (W: number, running: number, finished: number, t: Tota
 export const DETAIL_H = 98
 
 /** The selected running agent, in full. */
-export const detailSvg = (W: number, a: AgentRun, at: number, name: string): string => {
+export const detailSvg = (W: number, a: AgentRun, at: number, name: string, isLeft = false): string => {
   const color = agentColor(a)
   const ctx = ctxOf(a)
   const hot = ctx >= WARN_AT
@@ -166,7 +166,7 @@ export const detailSvg = (W: number, a: AgentRun, at: number, name: string): str
     `<rect class="gr" x="0" y="0" width="${W}" height="${DETAIL_H - 4}" rx="8"/><rect x="0" y="0" width="3" height="${DETAIL_H - 4}" rx="1.5" fill="${color}"/>
 <text x="14" y="20" font-size="12"><tspan fill="${color}" font-weight="600">${xml(name)}</tspan><tspan class="s">   ${xml(meta(a))}</tspan></text>
 <text class="t q" x="14" y="41" font-size="15">${xml(fit(a.description || a.type, 14, W - 28))}</text>
-${gauge(14, 49, W - 120, 9, ctx, hot ? WARN : color)}<text class="s" x="${W - 10}" y="57" font-size="11" text-anchor="end"${hot ? ` style="fill:${WARN}"` : ''}>${ctx}% of ${win}</text>
+${gauge(14, 49, W - 120, 9, shownPct(ctx, isLeft), hot ? WARN : color)}<text class="s" x="${W - 10}" y="57" font-size="11" text-anchor="end"${hot ? ` style="fill:${WARN}"` : ''}>${shownPct(ctx, isLeft)}% of ${win}${isLeft ? ' left' : ''}</text>
 <text class="m" x="14" y="80" font-size="11.5">${xml(fit(a.lastTool || 'Starting', 11.5, W - 140))}</text><text class="t" x="${W - 10}" y="80" font-size="11.5" text-anchor="end">≈${fmtCost(a.costUsd ?? 0)}   ${elapsed(a, at)}</text>`,
   )
 }
@@ -174,7 +174,7 @@ ${gauge(14, 49, W - 120, 9, ctx, hot ? WARN : color)}<text class="s" x="${W - 10
 export const LINE_H = 32
 
 /** Another running agent, in one line; its Open button sits beside it. */
-export const lineSvg = (W: number, a: AgentRun, at: number, name: string): string => {
+export const lineSvg = (W: number, a: AgentRun, at: number, name: string, isLeft = false): string => {
   const color = agentColor(a)
   const ctx = ctxOf(a)
   const hot = ctx >= WARN_AT
@@ -184,8 +184,8 @@ export const lineSvg = (W: number, a: AgentRun, at: number, name: string): strin
     LINE_H,
     `<rect x="0" y="8" width="3" height="16" rx="1.5" fill="${color}"/>
 <text x="14" y="21" font-size="12.5" font-weight="600" fill="${color}">${xml(name)}</text>
-<text class="t q" x="${14 + nameW}" y="21" font-size="13.5">${xml(fit(a.description || a.type, 13, W - nameW - 80))}</text>
-<text x="${W}" y="21" font-size="11.5" text-anchor="end"><tspan class="s"${hot ? ` style="fill:${WARN}"` : ''}>${ctx}%</tspan><tspan class="s">   ${elapsed(a, at)}</tspan></text>
+<text class="t q" x="${14 + nameW}" y="21" font-size="13.5">${xml(fit(a.description || a.type, 13, W - nameW - (isLeft ? 110 : 80)))}</text>
+<text x="${W}" y="21" font-size="11.5" text-anchor="end"><tspan class="s"${hot ? ` style="fill:${WARN}"` : ''}>${shownPct(ctx, isLeft)}%${isLeft ? ' left' : ''}</tspan><tspan class="s">   ${elapsed(a, at)}</tspan></text>
 <line class="ln" x1="14" y1="${LINE_H - 0.5}" x2="${W}" y2="${LINE_H - 0.5}"/>`,
   )
 }

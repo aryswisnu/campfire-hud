@@ -37,6 +37,8 @@
 
 Every bar is a framed gauge. Its colour is a gem that changes as it fills: emerald, topaz, amber, ruby, then crimson.
 
+**Battery mode.** Press **Show left** at the top of the pane, or type `/hud left`, and every bar shows what is left instead of what is used, like a battery or an HP bar. The numbers change too, for example from "24%" to "76% left". The colours still follow how close you are to the limit, and the 200K and auto-compact markers move so they still mark the same token counts. Press **Show used** or type `/hud used` to switch back. The choice is saved for your next sessions.
+
 The pane opens on its own when a session starts and when a subagent starts.
 
 **In the terminal**, the band and the pane draw as text with the same figures and colours:

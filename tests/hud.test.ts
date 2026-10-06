@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { DETAIL_H, fireLevel, sceneSvg } from '../hooks/agents'
+import { contextSvg, shownPct } from '../hooks/desktop'
 import { parseShortstat, parseStatus } from '../hooks/register'
 import type { AgentRun } from '../types'
 
@@ -139,3 +140,41 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
   }
 }
+
+// Battery mode: /hud left flips every bar and figure to the share left, and the choice is saved.
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`${surface}: /hud left shows what is left, and a saved choice comes back`, async ($, on) => {
+    mock.clock(on, { now: 1_000 })
+    const saved = new Map<string, unknown>()
+    on('store.get', (_$, e: { key: string }) => ({ value: saved.get(e.key) }) as never)
+    on('store.set', (_$, e: { key: string; value: unknown }) => {
+      saved.set(e.key, e.value)
+      return { value: undefined } as never
+    })
+    on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 240_000, window: 1_000_000, percent: 24 }, rateLimits: [{ kind: 'five_hour', percentUsed: 36 }], cost: { usd: 1 } } }))
+    on('session.model', () => ({ value: 'claude-opus-5-5' }))
+    on('ui.panes', () => ({ value: [] }))
+    on('ui.open', () => ({ value: undefined }) as never)
+
+    await $.command.run({ command: 'hud', args: 'left' } as never)
+    expect(saved.get('gaugeMode')).toBe('left')
+    const pane = JSON.stringify(await (await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'Pane', requestId: 'campfire-hud', props: PANE })).drawn())
+    expect(pane).toContain('76')
+    expect(pane).toContain('64% left')
+    expect(pane).toContain('Show used')
+    const band = JSON.stringify(await (await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'AbovePrompt', requestId: 'b', props: { hasSurvey: false, bodyColumns: 180 } as never })).drawn())
+    expect(band).toContain('76% left')
+
+    await $.command.run({ command: 'hud', args: 'used' } as never)
+    expect(saved.get('gaugeMode')).toBe('used')
+  })
+}
+
+// In battery mode a marker keeps marking the same token count, so its place mirrors.
+test('battery mode mirrors the bar and the auto-compact marker', () => {
+  expect(shownPct(24, true)).toBe(76)
+  expect(shownPct(24, false)).toBe(24)
+  const c = { percent: 24, tokens: 240_000, window: 1_000_000, compactAt: 834_000 }
+  expect(contextSvg(360, c, false)).toContain('x="299.2"')
+  expect(contextSvg(360, c, true)).toContain('x="58.8"')
+})
