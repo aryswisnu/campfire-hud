@@ -28,6 +28,8 @@
 - your 5-hour and weekly usage, shown as `—` until the API first reports them
 - a button that opens the side pane
 
+<p align="center"><img src="docs/band.gif" width="900" alt="The band above the prompt: the context gauge, cost, model, branch and the 5-hour and weekly gauges fill up, then switch to battery mode and drain"></p>
+
 **In the side pane** (`/hud` opens or closes it):
 - **Context:** a gauge with a tick every 10% of the window. On windows larger than 200K, a notch marks 200K tokens. An amber marker shows where auto-compact runs, when it is on.
 - **Stats:** the amount spent, the time elapsed, and the tokens in and out
