@@ -30,7 +30,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     on('agent.spawn', () => ({ model: 'claude-sonnet-5-5', agentId: 'a1' }))
 
     await $.agent.spawn(SPAWN as never)
-    const ui = await $.ui.mount({ plugin: 'session-hud', surface, component: 'Pane', requestId: 'session-hud', props: PANE })
+    const ui = await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'Pane', requestId: 'campfire-hud', props: PANE })
     expect(JSON.stringify(await ui.drawn())).toContain('Scan repo')
     expect(JSON.stringify(await ui.drawn())).toContain('1 running, 0 finished')
 
@@ -63,12 +63,12 @@ for (const surface of ['terminal', 'desktop'] as const) {
     on('session.model', () => ({ value: 'claude-opus-5-5' }))
     const band = { hasSurvey: false, bodyColumns: 180 } as never
 
-    const empty = JSON.stringify(await (await $.ui.mount({ plugin: 'session-hud', surface, component: 'AbovePrompt', requestId: 'b1', props: band })).drawn())
+    const empty = JSON.stringify(await (await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'AbovePrompt', requestId: 'b1', props: band })).drawn())
     expect(empty).toContain('5h —')
     expect(empty).toContain('Week —')
 
     limits = [{ kind: 'five_hour', percentUsed: 12 }, { kind: 'seven_day', percentUsed: 7.4 }]
-    const read = JSON.stringify(await (await $.ui.mount({ plugin: 'session-hud', surface, component: 'AbovePrompt', requestId: 'b2', props: band })).drawn())
+    const read = JSON.stringify(await (await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'AbovePrompt', requestId: 'b2', props: band })).drawn())
     expect(read).toContain('5h 12%')
     expect(read).toContain('Week 7%')
   })
@@ -86,7 +86,7 @@ test('desktop: Open shows another running agent in full', async ($, on) => {
 
   await $.agent.spawn({ ...SPAWN, tool_use_id: 't1', description: 'Older task' } as never)
   await $.agent.spawn({ ...SPAWN, tool_use_id: 't2', description: 'Newer task', subagentType: 'Plan' } as never)
-  const ui = await $.ui.mount({ plugin: 'session-hud', surface: 'desktop', component: 'Pane', requestId: 'session-hud', props: PANE })
+  const ui = await $.ui.mount({ plugin: 'campfire-hud', surface: 'desktop', component: 'Pane', requestId: 'campfire-hud', props: PANE })
   const detail = async () => JSON.stringify((await ui.findAll({ type: 'Svg' })).filter(x => x.props.height === DETAIL_H).map(x => x.props.source))
   expect(await detail()).toContain('Newer task')
 

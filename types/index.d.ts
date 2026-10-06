@@ -32,7 +32,7 @@ export type Repo = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'session-hud': {
+    'campfire-hud': {
       agents: AgentRun[]
       tokens: Tokens
       repo: Repo | null

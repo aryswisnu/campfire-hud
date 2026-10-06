@@ -1,11 +1,11 @@
 {
-  "name": "session-hud",
+  "name": "campfire-hud",
   "version": "0.1.0",
-  "description": "A live session HUD for Claude Code: context, spend, usage limits and repo status above the prompt, plus a side pane of running subagents drawn as pixel Clawds in anime costumes.",
+  "description": "A live HUD for Claude Code: context, spend, usage limits and repo status in RPG gauges, and your subagents as a fantasy party around a campfire.",
   "author": { "name": "aryswisnu", "url": "https://github.com/aryswisnu" },
-  "homepage": "https://github.com/aryswisnu/session-hud",
-  "repository": "https://github.com/aryswisnu/session-hud",
+  "homepage": "https://github.com/aryswisnu/campfire-hud",
+  "repository": "https://github.com/aryswisnu/campfire-hud",
   "license": "MIT",
-  "keywords": ["hud", "statusline", "subagents", "context", "usage"],
+  "keywords": ["hud", "statusline", "subagents", "context", "usage", "campfire", "rpg"],
   "types": "./types/index.d.ts"
 }

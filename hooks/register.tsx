@@ -42,13 +42,13 @@ import {
   STATUS,
 } from './desktop'
 
-const agents = atom({ plugin: 'session-hud', key: 'agents' } as const, [])
-const tokens = atom({ plugin: 'session-hud', key: 'tokens' } as const, { input: 0, output: 0 })
-const repo = atom({ plugin: 'session-hud', key: 'repo' } as const, null)
-const now = atom({ plugin: 'session-hud', key: 'now' } as const, 0)
-const panel = atom({ plugin: 'session-hud', key: 'panel' } as const, { isDoneCollapsed: false })
+const agents = atom({ plugin: 'campfire-hud', key: 'agents' } as const, [])
+const tokens = atom({ plugin: 'campfire-hud', key: 'tokens' } as const, { input: 0, output: 0 })
+const repo = atom({ plugin: 'campfire-hud', key: 'repo' } as const, null)
+const now = atom({ plugin: 'campfire-hud', key: 'now' } as const, 0)
+const panel = atom({ plugin: 'campfire-hud', key: 'panel' } as const, { isDoneCollapsed: false })
 
-const PANE = 'session-hud'
+const PANE = 'campfire-hud'
 const TITLE = 'Session'
 
 const inputOf = (u: StepUsage): number =>

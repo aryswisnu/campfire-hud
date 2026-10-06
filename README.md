@@ -2,9 +2,9 @@
   <img src="docs/band.gif" alt="The band above the prompt: the context gauge fills from 24% to 96% and turns from emerald to crimson, with the cost, model, branch, and 5-hour and weekly usage" width="900">
 </p>
 
-<h1 align="center">Session HUD</h1>
+<h1 align="center">Campfire HUD for Claude Code</h1>
 
-<p align="center"><code>session-hud</code> shows your context, spend, usage limits and repo status in RPG gauges, and your subagents as a fantasy party around a campfire.</p>
+<p align="center"><code>campfire-hud</code> shows your context, spend, usage limits and repo status in RPG gauges, and your subagents as a fantasy party around a campfire.</p>
 
 <p align="center">
   <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/Claude_Code-plugin-D97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code plugin"></a>
@@ -44,7 +44,7 @@ The pane opens on its own when a session starts and when a subagent starts.
 Each subagent is drawn as a voxel Clawd. Each agent type has its own role in a fantasy party.
 
 <p align="center">
-  <img src="docs/session-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
+  <img src="docs/campfire-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
 </p>
 
 | Agent type | Role | Motion while it runs |
@@ -76,15 +76,15 @@ This plugin is a mod: it uses Claude Code's function-hook API. That API is early
 
 1. Clone the repo:
    ```bash
-   git clone https://github.com/aryswisnu/session-hud ~/.claude/mods/session-hud
+   git clone https://github.com/aryswisnu/campfire-hud ~/.claude/mods/campfire-hud
    ```
 2. Load it in every session. To do this, add the folder to the `env` block of `~/.claude/settings.json`:
    ```json
-   { "env": { "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/session-hud" } }
+   { "env": { "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/campfire-hud" } }
    ```
    To try it in one terminal session only, run this instead:
    ```bash
-   claude --plugin-dir ~/.claude/mods/session-hud
+   claude --plugin-dir ~/.claude/mods/campfire-hud
    ```
 3. Start a new session.
 
