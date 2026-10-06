@@ -90,12 +90,28 @@ export const limitName = (kind: string): string =>
 
 // The context window as a gauge; a notch marks 200K on larger windows, where
 // long-context pricing starts.
-const contextGauge = (x: number, y: number, w: number, h: number, pct: number, window: number, color: string): string => {
-  const notch = window > 200_000 ? x + (200_000 / window) * w : -1
-  return gauge(x, y, w, h, pct, color) + (notch > 0 ? `<rect class="m" x="${notch - 0.5}" y="${y - 4}" width="1" height="${h + 7}"/>${t(notch, y + h + 14, 'm', 10, '200K', ' text-anchor="middle"')}` : '')
+// Where auto-compact runs, as an amber marker; the label sits inside the gauge's width.
+const compactMark = (x: number, y: number, w: number, h: number, compactAt: number | undefined, window: number, label: boolean): string => {
+  if (!compactAt || compactAt >= window) return ''
+  const cx = x + (compactAt / window) * w
+  const anchor = cx > x + w - 40 ? 'end' : cx < x + 40 ? 'start' : 'middle'
+  return `<rect x="${cx - 1}" y="${y - 4}" width="2" height="${h + 7}" fill="${STATUS.moderate}"/>${label ? t(cx, y + h + 14, 'i', 10, 'auto-compact', ` text-anchor="${anchor}" style="fill:${STATUS.moderate}"`) : ''}`
 }
 
-type ContextFigures = { percent: number; tokens: number; window: number }
+const contextGauge = (x: number, y: number, w: number, h: number, c: ContextFigures, color: string): string => {
+  const notch = c.window > 200_000 ? x + (200_000 / c.window) * w : -1
+  const compactX = c.compactAt ? x + (c.compactAt / c.window) * w : -1
+  // The 200K label gives way when the auto-compact label would overlap it.
+  const notchLabel = notch > 0 && Math.abs(notch - compactX) > 70 ? t(notch, y + h + 14, 'm', 10, '200K', ' text-anchor="middle"') : ''
+  return (
+    gauge(x, y, w, h, c.percent, color) +
+    (notch > 0 ? `<rect class="m" x="${notch - 0.5}" y="${y - 4}" width="1" height="${h + 7}"/>${notchLabel}` : '') +
+    compactMark(x, y, w, h, c.compactAt, c.window, true)
+  )
+}
+
+/** `compactAt`: the token count where auto-compact runs; absent when it is off or unknown. */
+type ContextFigures = { percent: number; tokens: number; window: number; compactAt?: number }
 
 export const CONTEXT_H = 90
 
@@ -109,7 +125,7 @@ export const contextSvg = (W: number, c: ContextFigures): string => {
 ${t(W, 15, 'i', 12, lv.word, ` text-anchor="end" style="fill:${lv.color}" font-weight="600"`)}
 <text x="0" y="45" font-size="30" font-weight="600" class="i">${Math.round(c.percent)}<tspan font-size="16" class="m">%</tspan></text>
 ${t(W, 45, 'm', 12, `${fmtTokens(c.tokens)} of ${win}`, ' text-anchor="end"')}
-${contextGauge(0, 58, W, 14, c.percent, c.window, lv.color)}`,
+${contextGauge(0, 58, W, 14, c, lv.color)}`,
   )
 }
 
@@ -179,7 +195,7 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
   // The strip gives way to the usage slots and the head figures on a narrow band.
   const room = W - 130 * BAND_LIMITS.length - 200
   const stripW = room >= 40 ? Math.min(160, room) : 0
-  const strip = stripW > 0 ? gauge(0, 6, stripW, 12, c.percent, lv.color) : ''
+  const strip = stripW > 0 ? gauge(0, 6, stripW, 12, c.percent, lv.color) + compactMark(0, 6, stripW, 12, c.compactAt, c.window, false) : ''
   const x0 = stripW ? stripW + 10 : 0
   const SLOT = 130
   const slotsX = W - SLOT * BAND_LIMITS.length

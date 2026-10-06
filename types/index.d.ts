@@ -37,6 +37,8 @@ declare module 'claude-code' {
       tokens: Tokens
       repo: Repo | null
       now: number
+      /** Tokens at which auto-compact runs; null when it is off or not read yet. */
+      compactAt: number | null
       panel: Panel
     }
   }

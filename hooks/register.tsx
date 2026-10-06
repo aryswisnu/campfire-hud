@@ -46,6 +46,7 @@ const agents = atom({ plugin: 'campfire-hud', key: 'agents' } as const, [])
 const tokens = atom({ plugin: 'campfire-hud', key: 'tokens' } as const, { input: 0, output: 0 })
 const repo = atom({ plugin: 'campfire-hud', key: 'repo' } as const, null)
 const now = atom({ plugin: 'campfire-hud', key: 'now' } as const, 0)
+const compactAt = atom({ plugin: 'campfire-hud', key: 'compactAt' } as const, null)
 const panel = atom({ plugin: 'campfire-hud', key: 'panel' } as const, { isDoneCollapsed: false })
 
 const PANE = 'campfire-hud'
@@ -55,13 +56,23 @@ const inputOf = (u: StepUsage): number =>
   (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)
 
 // The terminal's framed RPG gauge: solid blocks in the gem colour on a dim track, between frame edges.
-const termGauge = (Text: ElementConstructor<TextProps>, pct: number, width: number, color: string) => {
+// `markPct` puts an amber ┃ where auto-compact runs.
+const termGauge = (Text: ElementConstructor<TextProps>, pct: number, width: number, color: string, markPct?: number) => {
   const lit = Math.round((Math.max(0, Math.min(100, pct)) / 100) * width)
+  const mark = markPct !== undefined && markPct < 100 ? Math.min(width - 1, Math.round((markPct / 100) * width)) : -1
+  const cells = (from: number, to: number, ch: string) => ch.repeat(Math.max(0, to - from))
+  const fill = mark >= 0 && mark < lit ? [cells(0, mark, '█'), cells(mark + 1, lit, '█')] : [cells(0, lit, '█'), '']
+  const track = mark >= lit ? [cells(lit, mark, '░'), cells(mark + 1, width, '░')] : [cells(lit, width, '░'), '']
+  const marker = mark >= 0 ? <Text color={STATUS.moderate}>┃</Text> : ''
   return (
     <Text>
       <Text dimColor>▕</Text>
-      <Text color={color}>{'█'.repeat(lit)}</Text>
-      <Text dimColor>{'░'.repeat(Math.max(0, width - lit))}</Text>
+      <Text color={color}>{fill[0]}</Text>
+      {mark >= 0 && mark < lit && marker}
+      <Text color={color}>{fill[1]}</Text>
+      <Text dimColor>{track[0]}</Text>
+      {mark >= lit && marker}
+      <Text dimColor>{track[1]}</Text>
       <Text dimColor>▏</Text>
     </Text>
   )
@@ -108,6 +119,13 @@ async function refreshRepo($: EngineInterface): Promise<void> {
   await update($, repo, () => next)
 }
 
+// The summary breakdown is estimated locally and sends no API request.
+async function refreshCompact($: EngineInterface): Promise<void> {
+  const b = (await $.session.usage({ breakdown: 'summary' }).catch(() => null))?.context.breakdown
+  const at = b?.isAutoCompactEnabled && b.autoCompactThreshold ? b.autoCompactThreshold : null
+  await update($, compactAt, () => at)
+}
+
 async function togglePane($: EngineInterface): Promise<boolean> {
   if ((await $.ui.panes()).some(p => p.id === PANE)) {
     await $.ui.close({ id: PANE })
@@ -123,6 +141,7 @@ export const register: Register = on => {
     await $.command.register({ name: 'hud', description: 'Show or hide the session pane: context, spend, repo and subagents' })
     void $.ui.open({ id: PANE, title: TITLE })
     void refreshRepo($)
+    void refreshCompact($)
 
     let tick = 0
     $.clock.every(1000, () => {
@@ -135,6 +154,7 @@ export const register: Register = on => {
           await update($, now, () => at)
         }
         if (tick % 5 === 0) await refreshRepo($)
+        if (tick % 30 === 0) await refreshCompact($)
       })()
     })
     return started
@@ -223,6 +243,8 @@ export const register: Register = on => {
     const r: Repo | null = await read($, repo)
     const list = await read($, agents)
     const pct = usage.context.percent ?? 0
+    const compact = (await read($, compactAt)) ?? undefined
+    const compactPct = compact ? (compact / usage.context.window) * 100 : undefined
     const lv = levelOf(pct)
     const cost = usage.cost?.usd ?? 0
     const running = list.filter(a => a.status === 'running').length
@@ -245,7 +267,7 @@ export const register: Register = on => {
       return (
         <Box flexDirection="row" alignItems="center" gap={1}>
           <Svg
-            source={bandSvg(W, model, { percent: pct, tokens: usage.context.tokens ?? 0, window: usage.context.window }, cost, r?.branch ?? '', usage.rateLimits)}
+            source={bandSvg(W, model, { percent: pct, tokens: usage.context.tokens ?? 0, window: usage.context.window, compactAt: compact }, cost, r?.branch ?? '', usage.rateLimits)}
             alt={`Context ${Math.round(pct)}%, ${lv.word}. $${cost.toFixed(2)} spent. ${bandLimits}`}
             width={W}
             height={24}
@@ -259,7 +281,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" gap={2}>
         <Text>
-          {termGauge(Text, pct, width, lv.color)} <Text bold>{Math.round(pct)}%</Text> <Text color={lv.color}>{lv.word}</Text>
+          {termGauge(Text, pct, width, lv.color, compactPct)} <Text bold>{Math.round(pct)}%</Text> <Text color={lv.color}>{lv.word}</Text>
         </Text>
         <Text>${cost.toFixed(2)}</Text>
         <Text dimColor>{modelName(model)}</Text>
@@ -280,7 +302,7 @@ export const register: Register = on => {
     const list = await read($, agents)
     const at = Math.max(await read($, now), ...list.map(a => a.startedAt), usage.startedAt)
 
-    const ctx = { percent: usage.context.percent ?? 0, tokens: usage.context.tokens ?? 0, window: usage.context.window }
+    const ctx = { percent: usage.context.percent ?? 0, tokens: usage.context.tokens ?? 0, window: usage.context.window, compactAt: (await read($, compactAt)) ?? undefined }
     const cost = usage.cost?.usd ?? 0
     const lv = levelOf(ctx.percent)
     const p: Panel = await read($, panel)
@@ -405,8 +427,9 @@ export const register: Register = on => {
             <Text dimColor>Context </Text>
             <Text bold>{Math.round(ctx.percent)}%</Text> <Text color={lv.color}>{lv.word}</Text>
             <Text dimColor>  {fmtTokens(ctx.tokens)} of {fmtTokens(ctx.window)}</Text>
+            {ctx.compactAt !== undefined && <Text color={STATUS.moderate}>{`  auto-compact at ${fmtTokens(ctx.compactAt)}`}</Text>}
           </Text>
-          {termGauge(Text, ctx.percent, width, lv.color)}
+          {termGauge(Text, ctx.percent, width, lv.color, ctx.compactAt ? (ctx.compactAt / ctx.window) * 100 : undefined)}
         </Box>
         <Box flexDirection="column">
           <Text>

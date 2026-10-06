@@ -22,14 +22,14 @@
 ## What it shows
 
 **Above the prompt** (always on; in a narrow desktop band the branch and then the model give way first):
-- the context window as a gauge, its percentage and a status from Good to Critical
+- the context window as a gauge, its percentage and a status from Good to Critical, with an amber marker where auto-compact runs
 - the session cost and the model
 - the git branch, when there is one
 - your 5-hour and weekly usage, shown as `—` until the API first reports them
 - a button that opens the side pane
 
 **In the side pane** (`/hud` opens or closes it):
-- **Context:** a gauge with a tick every 10% of the window. On windows larger than 200K, a notch marks 200K tokens.
+- **Context:** a gauge with a tick every 10% of the window. On windows larger than 200K, a notch marks 200K tokens. An amber marker shows where auto-compact runs, when it is on.
 - **Stats:** the amount spent, the time elapsed, and the tokens in and out
 - **Limits:** each usage limit the API reports, such as the 5-hour and weekly windows
 - **Repo:** the model, the branch, and the staged, modified and new files, with +/− lines

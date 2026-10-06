@@ -108,3 +108,34 @@ test('the campfire grows with the party and goes out when it is done', () => {
   expect(asleep).not.toContain('class="fl"')
   expect(asleep.match(/class="zz"/g)?.length).toBe(1)
 })
+
+// The gauges must show where auto-compact runs, and nothing when it is off.
+for (const surface of ['terminal', 'desktop'] as const) {
+  for (const isOn of [true, false]) {
+    test(`${surface}: auto-compact marker ${isOn ? 'shows' : 'is absent when off'}`, async ($, on) => {
+      mock.clock(on, { now: 1_000 })
+      on('session.usage', (_$, e: { breakdown?: string } | undefined) => ({
+        value: {
+          startedAt: 0,
+          context: {
+            tokens: 236_000, window: 1_000_000, percent: 24,
+            ...(e?.breakdown ? { breakdown: { isAutoCompactEnabled: isOn, autoCompactThreshold: isOn ? 834_000 : undefined } } : {}),
+          },
+          rateLimits: [], cost: { usd: 1 },
+        },
+      }) as never)
+      on('session.model', () => ({ value: 'claude-opus-5-5' }))
+      on('session.start', () => ({ cwd: '/repo' }) as never)
+      on('session.cwd', () => ({ value: '/repo' }))
+      on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+      on('command.register', () => ({ value: undefined }) as never)
+      on('ui.open', () => ({ value: undefined }) as never)
+      await $.session.start({ source: 'startup', cwd: '/repo' } as never)
+
+      const pane = JSON.stringify(await (await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'Pane', requestId: 'campfire-hud', props: PANE })).drawn())
+      const label = surface === 'desktop' ? 'auto-compact' : 'auto-compact at 834K'
+      if (isOn) expect(pane).toContain(label)
+      else expect(pane).not.toContain('auto-compact')
+    })
+  }
+}
