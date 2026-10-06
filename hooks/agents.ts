@@ -18,7 +18,8 @@ ${GAUGE_CSS}
 text{font-family:${SANS};font-variant-numeric:tabular-nums;white-space:pre}
 .q{font-family:${SERIF}}
 .fl{animation:bl .5s steps(1) infinite}.fl2{animation:bl .5s steps(1) infinite -.25s}@keyframes bl{50%{opacity:.2}}
-@media (prefers-reduced-motion: reduce){.fl,.fl2{animation:none}}
+@keyframes tw{50%{opacity:.25}}.tw{animation:tw 1s steps(1) infinite}.tw2{animation-delay:-.5s}
+@media (prefers-reduced-motion: reduce){.fl,.fl2,.tw{animation:none}}
 </style>`
 
 const svg = (W: number, H: number, body: string): string =>
@@ -100,6 +101,29 @@ const fire = (level: number, x: number, y: number): string => {
 <g transform="scale(${s})"><g class="fl"><polygon points="-8,4 0,-18 8,4" fill="${WARN}"/><polygon points="-4,4 0,-9 4,4" fill="#F2D35A"/></g>${sides}</g></g>`
 }
 
+// Before the first agent: an unlit camp, so it reads as not started rather than asleep.
+const emptyCamp = (W: number, cx: number, cy: number): string => {
+  const stones = Array.from({ length: 9 }, (_, i) => {
+    const a = (i / 9) * Math.PI * 2
+    return `<rect x="${(cx + 26 * Math.cos(a) - 4).toFixed(1)}" y="${(cy + 6 + 9 * Math.sin(a) - 2.5).toFixed(1)}" width="8" height="5" rx="2" fill="${i % 2 ? '#7d7b76' : '#9a9893'}"/>`
+  }).join('')
+  const logs = `<path d="M${cx - 13} ${cy + 8}L${cx} ${cy - 16}M${cx + 13} ${cy + 8}L${cx} ${cy - 16}M${cx - 3} ${cy + 10}L${cx + 2} ${cy - 16}" stroke="#8A5A2B" stroke-width="3.2" stroke-linecap="round"/>
+<path d="M${cx - 10} ${cy + 9}h20" stroke="#A8743F" stroke-width="2.4" stroke-linecap="round"/>`
+  const tx = cx - Math.min(130, W / 2 - 60)
+  const ty = cy - 22
+  const tent = `<polygon points="${tx - 26},${ty + 22} ${tx},${ty - 10} ${tx + 26},${ty + 22}" fill="#B9A57C"/><polygon points="${tx},${ty - 10} ${tx + 26},${ty + 22} ${tx + 34},${ty + 18} ${tx + 8},${ty - 12}" fill="#8F7D58"/>
+<polygon points="${tx - 7},${ty + 22} ${tx},${ty + 6} ${tx + 7},${ty + 22}" fill="#5A4A33"/>`
+  const grass = [[0.12, 0.72], [0.7, 0.62], [0.88, 0.76], [0.3, 0.8], [0.58, 0.8]]
+    .map(([gx = 0, gy = 0]) => `<path d="M${W * gx - 4} ${SCENE_H * gy}l2 -6 2 6 2 -8 2 8" fill="none" stroke="#5E9E45" stroke-width="1.4" opacity=".7"/>`)
+    .join('')
+  const stars = [[0.62, 24, ''], [0.8, 40, ' tw2'], [0.9, 18, '']]
+    .map(([sx, sy, c]) => `<rect class="tw${c}" x="${(W * Number(sx)).toFixed(1)}" y="${sy}" width="2.4" height="2.4" fill="#E9E3D8"/>`)
+    .join('')
+  const big = (cx0: number, cy0: number, k: number, g: string) =>
+    `<g transform="translate(${cx0} ${cy0}) scale(${k}) translate(${-cx0} ${-cy0})">${g}</g>`
+  return `${stars}${grass}${big(tx, ty + 22, 1.5, tent)}${big(cx, cy + 6, 1.7, stones + logs)}`
+}
+
 export const SCENE_H = 220
 const RING_MAX = 8
 
@@ -123,7 +147,7 @@ export const sceneSvg = (W: number, running: AgentRun[], finished: AgentRun[], n
       return { a, x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) }
     })
     .sort((p, q) => p.y - q.y)
-  const camp = fire(fireLevel(running.length), cx, cy - 4)
+  const camp = all.length === 0 ? emptyCamp(W, cx, cy) : fire(fireLevel(running.length), cx, cy - 4)
   let body = ''
   let isFireDrawn = false
   for (const { a, x, y } of spots) {
@@ -166,7 +190,7 @@ export const detailSvg = (W: number, a: AgentRun, at: number, name: string, isLe
     `<rect class="gr" x="0" y="0" width="${W}" height="${DETAIL_H - 4}" rx="8"/><rect x="0" y="0" width="3" height="${DETAIL_H - 4}" rx="1.5" fill="${color}"/>
 <text x="14" y="20" font-size="12"><tspan fill="${color}" font-weight="600">${xml(name)}</tspan><tspan class="s">   ${xml(meta(a))}</tspan></text>
 <text class="t q" x="14" y="41" font-size="15">${xml(fit(a.description || a.type, 14, W - 28))}</text>
-${gauge(14, 49, W - 120, 9, shownPct(ctx, isLeft), hot ? WARN : color)}<text class="s" x="${W - 10}" y="57" font-size="11" text-anchor="end"${hot ? ` style="fill:${WARN}"` : ''}>${shownPct(ctx, isLeft)}% of ${win}${isLeft ? ' left' : ''}</text>
+${gauge(14, 49, W - 120, 9, shownPct(ctx, isLeft), hot ? WARN : color, 10, isLeft)}<text class="s" x="${W - 10}" y="57" font-size="11" text-anchor="end"${hot ? ` style="fill:${WARN}"` : ''}>${shownPct(ctx, isLeft)}% of ${win}${isLeft ? ' left' : ''}</text>
 <text class="m" x="14" y="80" font-size="11.5">${xml(fit(a.lastTool || 'Starting', 11.5, W - 140))}</text><text class="t" x="${W - 10}" y="80" font-size="11.5" text-anchor="end">≈${fmtCost(a.costUsd ?? 0)}   ${elapsed(a, at)}</text>`,
   )
 }

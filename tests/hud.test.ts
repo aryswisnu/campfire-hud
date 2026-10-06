@@ -110,6 +110,16 @@ test('the campfire grows with the party and goes out when it is done', () => {
   expect(asleep.match(/class="zz"/g)?.length).toBe(1)
 })
 
+// Before any agent starts, the camp must read as not started, not as a party that went to sleep.
+test('the camp waits, unlit, before the first agent', () => {
+  const waiting = sceneSvg(360, [], [], new Map())
+  const asleep = sceneSvg(360, [], [run('a', 'Explore', 'done')], new Map())
+  expect(waiting).toContain('class="tw"')
+  expect(waiting).toContain('No agents yet')
+  expect(waiting).not.toContain('class="fl"')
+  expect(asleep).not.toContain('class="tw"')
+})
+
 // The gauges must show where auto-compact runs, and nothing when it is off.
 for (const surface of ['terminal', 'desktop'] as const) {
   for (const isOn of [true, false]) {
@@ -170,11 +180,11 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-// In battery mode a marker keeps marking the same token count, so its place mirrors.
+// In battery mode a marker keeps marking the same token count, so its place mirrors (on a gauge shifted right by the heart).
 test('battery mode mirrors the bar and the auto-compact marker', () => {
   expect(shownPct(24, true)).toBe(76)
   expect(shownPct(24, false)).toBe(24)
   const c = { percent: 24, tokens: 240_000, window: 1_000_000, compactAt: 834_000 }
   expect(contextSvg(360, c, false)).toContain('x="299.2"')
-  expect(contextSvg(360, c, true)).toContain('x="58.8"')
+  expect(contextSvg(360, c, true)).toContain('x="72.1"')
 })

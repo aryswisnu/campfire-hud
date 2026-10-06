@@ -58,8 +58,8 @@ const inputOf = (u: StepUsage): number =>
   (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)
 
 // The terminal's framed RPG gauge: solid blocks in the gem colour on a dim track, between frame edges.
-// `markPct` puts an amber ┃ where auto-compact runs.
-const termGauge = (Text: ElementConstructor<TextProps>, pct: number, width: number, color: string, markPct?: number) => {
+// `markPct` puts an amber ┃ where auto-compact runs; `isHp` puts battery mode's ♥ in front.
+const termGauge = (Text: ElementConstructor<TextProps>, pct: number, width: number, color: string, markPct?: number, isHp = false) => {
   const lit = Math.round((Math.max(0, Math.min(100, pct)) / 100) * width)
   const mark = markPct !== undefined && markPct < 100 ? Math.min(width - 1, Math.round((markPct / 100) * width)) : -1
   const cells = (from: number, to: number, ch: string) => ch.repeat(Math.max(0, to - from))
@@ -68,7 +68,7 @@ const termGauge = (Text: ElementConstructor<TextProps>, pct: number, width: numb
   const marker = mark >= 0 ? <Text color={STATUS.moderate}>┃</Text> : ''
   return (
     <Text>
-      <Text dimColor>▕</Text>
+      {isHp ? <Text color={STATUS.high}>♥</Text> : <Text dimColor>▕</Text>}
       <Text color={color}>{fill[0]}</Text>
       {mark >= 0 && mark < lit && marker}
       <Text color={color}>{fill[1]}</Text>
@@ -300,7 +300,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" gap={2}>
         <Text>
-          {termGauge(Text, shownPct(pct, isLeft), width, lv.color, compactPct)} <Text bold>{pctText(pct, isLeft)}</Text> <Text color={lv.color}>{lv.word}</Text>
+          {termGauge(Text, shownPct(pct, isLeft), width, lv.color, compactPct, isLeft)} <Text bold>{pctText(pct, isLeft)}</Text> <Text color={lv.color}>{lv.word}</Text>
         </Text>
         <Text>${cost.toFixed(2)}</Text>
         <Text dimColor>{modelName(model)}</Text>
@@ -328,7 +328,7 @@ export const register: Register = on => {
     const isLeft = p.isLeft ?? false
     const modeToggle = (
       <Box key="mode" flexDirection="row" justifyContent="flex-end">
-        <Button key="gauge-mode" plain dimColor label={isLeft ? 'Show used' : 'Show left'} onPress={() => setLeft($, !isLeft)} />
+        <Button key="gauge-mode" plain dimColor label={isLeft ? '✦ Show used' : '♥ Show left'} onPress={() => setLeft($, !isLeft)} />
       </Box>
     )
     const running = list.filter(a => a.status === 'running').reverse()
@@ -430,7 +430,7 @@ export const register: Register = on => {
           </Text>
           <Text wrap="truncate-end">
             {'  '}
-            {termGauge(Text, shownPct(c, isLeft), barW, a.status === 'running' && c >= 70 ? STATUS.moderate : color)}
+            {termGauge(Text, shownPct(c, isLeft), barW, a.status === 'running' && c >= 70 ? STATUS.moderate : color, undefined, isLeft)}
             <Text dimColor>
               {' '}
               ctx {pctText(c, isLeft)} · {fmtK(a.contextTokens)} ≈{fmtCost(a.costUsd ?? 0)} {fmtTime((a.endedAt ?? at) - a.startedAt)}
@@ -458,7 +458,7 @@ export const register: Register = on => {
             </Text>
             {ctx.compactAt !== undefined && <Text color={STATUS.moderate}>{`  auto-compact at ${fmtTokens(ctx.compactAt)}`}</Text>}
           </Text>
-          {termGauge(Text, shownPct(ctx.percent, isLeft), width, lv.color, ctx.compactAt ? shownPct((ctx.compactAt / ctx.window) * 100, isLeft) : undefined)}
+          {termGauge(Text, shownPct(ctx.percent, isLeft), width, lv.color, ctx.compactAt ? shownPct((ctx.compactAt / ctx.window) * 100, isLeft) : undefined, isLeft)}
         </Box>
         <Box flexDirection="column">
           <Text>

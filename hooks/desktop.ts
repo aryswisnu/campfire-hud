@@ -20,16 +20,32 @@ export const GAUGE_CSS = `.gf{fill:#3B2F27}.gt{fill:#E9E3D8}
 const shade = (hex: string): string =>
   '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.7).toString(16).padStart(2, '0')).join('')
 
-export const gauge = (x: number, y: number, w: number, h: number, pct: number, color: string, ticks = 10): string => {
+/**
+ * `isHp` draws battery mode's HP bar: a rounded pill with no ticks and a bright
+ * edge where the fill ends, so it never reads as the XP bar of used mode.
+ */
+export const gauge = (x: number, y: number, w: number, h: number, pct: number, color: string, ticks = 10, isHp = false): string => {
   const inner = w - 2
   const fill = (Math.max(0, Math.min(100, pct)) / 100) * inner
-  let out = `<rect class="gf" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/><rect class="gt" x="${x + 1}" y="${y + 1}" width="${inner}" height="${h - 2}" rx="1.2"/>`
+  const r = isHp ? (h - 2) / 2 : 1.2
+  let out = `<rect class="gf" x="${x}" y="${y}" width="${w}" height="${h}" rx="${isHp ? h / 2 : 2}"/><rect class="gt" x="${x + 1}" y="${y + 1}" width="${inner}" height="${h - 2}" rx="${r}"/>`
   if (fill > 0)
-    out += `<rect x="${x + 1}" y="${y + 1}" width="${fill.toFixed(1)}" height="${h - 2}" rx="1.2" fill="${shade(color)}"/><rect x="${x + 1}" y="${y + 1}" width="${fill.toFixed(1)}" height="${((h - 2) * 0.55).toFixed(1)}" rx="1.2" fill="${color}"/>
+    out += `<rect x="${x + 1}" y="${y + 1}" width="${fill.toFixed(1)}" height="${h - 2}" rx="${r}" fill="${shade(color)}"/><rect x="${x + 1}" y="${y + 1}" width="${fill.toFixed(1)}" height="${((h - 2) * 0.55).toFixed(1)}" rx="${r}" fill="${color}"/>
 <rect x="${x + 2}" y="${y + 1.6}" width="${Math.max(0, fill - 2).toFixed(1)}" height="${Math.max(1, (h - 2) * 0.18).toFixed(1)}" fill="#fff" opacity=".35"/>`
-  for (let i = 1; i < ticks; i++) out += `<rect class="gf" x="${(x + 1 + (inner * i) / ticks - 0.5).toFixed(1)}" y="${y + 1}" width="1" height="${h - 2}" opacity=".55"/>`
+  if (isHp && fill > 3) out += `<rect x="${(x + fill - 0.5).toFixed(1)}" y="${y + 1}" width="1.5" height="${h - 2}" fill="#fff" opacity=".85"/>`
+  for (let i = 1; !isHp && i < ticks; i++) out += `<rect class="gf" x="${(x + 1 + (inner * i) / ticks - 0.5).toFixed(1)}" y="${y + 1}" width="1" height="${h - 2}" opacity=".55"/>`
   return out
 }
+
+// Battery mode's emblem in front of the context gauges: a pixel heart, 12 units wide.
+const HEART_PX = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...']
+const heart = (x: number, y: number, size: number): string => {
+  const u = size / 7
+  return HEART_PX.flatMap((row, j) =>
+    [...row].map((ch, i) => (ch === '#' ? `<rect x="${(x + i * u).toFixed(1)}" y="${(y + j * u).toFixed(1)}" width="${(u + 0.05).toFixed(2)}" height="${(u + 0.05).toFixed(2)}" fill="${STATUS.high}"/>` : '')),
+  ).join('')
+}
+const HEART_W = 16
 
 const CSS = `<style>
 .i{fill:#1E2023}.m{fill:#7A7E85}${GAUGE_CSS}
@@ -108,13 +124,16 @@ const compactMark = (x: number, y: number, w: number, h: number, c: ContextFigur
 
 // The context window as a gauge; a notch marks 200K on larger windows, where
 // long-context pricing starts.
-const contextGauge = (x: number, y: number, w: number, h: number, c: ContextFigures, color: string, isLeft: boolean): string => {
+const contextGauge = (x0: number, y: number, w0: number, h: number, c: ContextFigures, color: string, isLeft: boolean): string => {
+  const x = isLeft ? x0 + HEART_W : x0
+  const w = isLeft ? w0 - HEART_W : w0
   const notch = c.window > 200_000 ? markX(x, w, 200_000, c.window, isLeft) : -1
   const compactX = c.compactAt ? markX(x, w, c.compactAt, c.window, isLeft) : -1
   // The 200K label gives way when the auto-compact label would overlap it.
   const notchLabel = notch > 0 && Math.abs(notch - compactX) > 70 ? t(notch, y + h + 14, 'm', 10, '200K', ' text-anchor="middle"') : ''
   return (
-    gauge(x, y, w, h, shownPct(c.percent, isLeft), color) +
+    (isLeft ? heart(x0, y + (h - 12 * (6 / 7)) / 2, 12) : '') +
+    gauge(x, y, w, h, shownPct(c.percent, isLeft), color, 10, isLeft) +
     (notch > 0 ? `<rect class="m" x="${notch - 0.5}" y="${y - 4}" width="1" height="${h + 7}"/>${notchLabel}` : '') +
     compactMark(x, y, w, h, c, isLeft, true)
   )
@@ -164,7 +183,7 @@ export const limitsSvg = (W: number, limits: Limit[], isLeft = false): string =>
       const pct = Math.max(0, Math.min(100, l.percentUsed))
       const color = levelOf(pct).color
       return `${t(x, 12, 'm', 11, limitName(l.kind))}${t(x + each, 12, 'i', 11, pctText(l.percentUsed, isLeft), ' text-anchor="end"')}
-${gauge(x, 19, each, 8, shownPct(pct, isLeft), color)}`
+${gauge(x, 19, each, 8, shownPct(pct, isLeft), color, 10, isLeft)}`
     })
     .join('')
   return svg(W, LIMITS_H, body)
@@ -198,7 +217,7 @@ export const BAND_LIMITS: [string, string][] = [
 const limitSlot = (x: number, label: string, l: Limit | undefined, isLeft: boolean): string => {
   const barW = 44
   const pct = l ? Math.max(0, Math.min(100, l.percentUsed)) : 0
-  return `${t(x, 16, 'm', 12, label)}${gauge(x + 38, 8, barW, 8, l ? shownPct(pct, isLeft) : 0, levelOf(pct).color, 5)}${t(x + 38 + barW + 6, 16, 'i', 12, l ? pctText(l.percentUsed, isLeft) : '—', ' font-weight="600"')}`
+  return `${t(x, 16, 'm', 12, label)}${gauge(x + 38, 8, barW, 8, l ? shownPct(pct, isLeft) : 0, levelOf(pct).color, 5, isLeft)}${t(x + 38 + barW + 6, 16, 'i', 12, l ? pctText(l.percentUsed, isLeft) : '—', ' font-weight="600"')}`
 }
 
 export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false): string => {
@@ -208,7 +227,12 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
   const SLOT = isLeft ? 160 : 130
   const room = W - SLOT * BAND_LIMITS.length - 200
   const stripW = room >= 40 ? Math.min(160, room) : 0
-  const strip = stripW > 0 ? gauge(0, 6, stripW, 12, shownPct(c.percent, isLeft), lv.color) + compactMark(0, 6, stripW, 12, c, isLeft, false) : ''
+  const sx = isLeft ? HEART_W : 0
+  const sw = stripW - sx
+  const strip =
+    stripW > 0
+      ? (isLeft ? heart(0, 7, 12) : '') + gauge(sx, 6, sw, 12, shownPct(c.percent, isLeft), lv.color, 10, isLeft) + compactMark(sx, 6, sw, 12, c, isLeft, false)
+      : ''
   const x0 = stripW ? stripW + 10 : 0
   const slotsX = W - SLOT * BAND_LIMITS.length
   const slots = BAND_LIMITS.map(([kind, label], i) => limitSlot(slotsX + SLOT * i, label, limits.find(l => l.kind === kind), isLeft)).join('')

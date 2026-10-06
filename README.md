@@ -37,13 +37,13 @@
 
 Every bar is a framed gauge. Its colour is a gem that changes as it fills: emerald, topaz, amber, ruby, then crimson.
 
-**Battery mode.** Press **Show left** at the top of the pane, or type `/hud left`, and every bar shows what is left instead of what is used, like a battery or an HP bar. The numbers change too, for example from "24%" to "76% left". The colours still follow how close you are to the limit, and the 200K and auto-compact markers move so they still mark the same token counts. Press **Show used** or type `/hud used` to switch back. The choice is saved for your next sessions.
+**Battery mode.** Press **♥ Show left** at the top of the pane, or type `/hud left`, and every bar shows what is left instead of what is used. The bars change to rounded HP bars, and a red heart sits in front of the context bar. The numbers change too, for example from "24%" to "76% left". The colours still follow how close you are to the limit, and the 200K and auto-compact markers move so they still mark the same token counts. Press **✦ Show used** or type `/hud used` to switch back. The choice is saved for your next sessions.
 
 The pane opens on its own when a session starts and when a subagent starts.
 
 **In the terminal**, the band and the pane draw as text with the same figures and colours:
 
-<img src="docs/terminal.png" width="760" alt="The terminal version: the pane on the right lists context, spend, limits, repo status and each subagent with its role, model, context bar, cost, time and current tool; the band sits above the prompt">
+<img src="docs/terminal.png" width="760" alt="The terminal version in battery mode: the pane on the right lists context, spend, limits, repo status and each subagent with its role, model, context bar, cost, time and current tool; the band sits above the prompt">
 
 ## The party
 
@@ -66,7 +66,7 @@ Each subagent is drawn as a voxel Clawd. Each agent type has its own role in a f
 | `✕ ✕` | failed |
 | closed eyes and `z z` | asleep: every agent has finished |
 
-**The campfire.** The running agents stand in a ring around a fire. The fire grows with the number of agents that run at the same time: small for 1 or 2, medium for 3 or 4, and big for 5 or more. When the last agent finishes, the fire goes out and the party sleeps. The ring shows up to 8 agents. A count shows the rest.
+**The campfire.** Before the first agent starts, the camp waits: a tent, a ring of stones and an unlit stack of logs under the stars. The running agents stand in a ring around a fire. The fire grows with the number of agents that run at the same time: small for 1 or 2, medium for 3 or 4, and big for 5 or more. When the last agent finishes, the fire goes out and the party sleeps. The ring shows up to 8 agents. A count shows the rest.
 
 **The list.** Under the fire, the newest running agent is shown in full: its task, model and effort, context, cost, time and current tool. Every other running agent takes one line. Press **Open** on a line to show that agent in full. Finished agents follow, with **Hide** to fold them.
 
