@@ -24,6 +24,8 @@
 - your 5-hour and weekly usage, shown as `—` until the API first reports them
 - a button that opens the side pane
 
+<img src="docs/band.gif" width="760" alt="The band above the prompt: the context gauge fills from 24% to 96% and turns from emerald to crimson, with the cost, model, branch, and 5-hour and weekly usage">
+
 **In the side pane** (`/hud` opens or closes it):
 - **Context:** a gauge with a tick every 10% of the window. On windows larger than 200K, a notch marks 200K tokens.
 - **Stats:** the amount spent, the time elapsed, and the tokens in and out
