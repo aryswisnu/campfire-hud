@@ -16,7 +16,7 @@ const SPAWN = {
   fork: false,
 } as const
 
-const PANE = { title: 'Session', isFocused: false, bodyColumns: 50, placement: 'dock' } as never
+const PANE = { title: 'Details', isFocused: false, bodyColumns: 50, placement: 'dock' } as never
 
 // The pane exists to show subagents: a spawn must appear running, its turn.complete must mark it done.
 for (const surface of ['terminal', 'desktop'] as const) {

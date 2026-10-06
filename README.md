@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/band.gif" alt="The band above the prompt: the context gauge fills from 24% to 96% and turns from emerald to crimson, with the cost, model, branch, and 5-hour and weekly usage" width="900">
+<img src="docs/session.gif" width="900" alt="A Claude Code session from the start: a first prompt leaves the campfire empty, a second prompt starts four subagents who gather round the fire, then the HUD switches between used and left">
 </p>
 
 <h1 align="center">Campfire HUD for Claude Code</h1>

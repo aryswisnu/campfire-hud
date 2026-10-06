@@ -52,7 +52,7 @@ const compactAt = atom({ plugin: 'campfire-hud', key: 'compactAt' } as const, nu
 const panel = atom({ plugin: 'campfire-hud', key: 'panel' } as const, { isDoneCollapsed: false })
 
 const PANE = 'campfire-hud'
-const TITLE = 'Session'
+const TITLE = 'Details'
 
 const inputOf = (u: StepUsage): number =>
   (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)
@@ -177,7 +177,7 @@ export const register: Register = on => {
       await setLeft($, mode === 'left')
       return { text: mode === 'left' ? 'The bars now show what is left.' : 'The bars now show what is used.' }
     }
-    return { text: (await togglePane($)) ? 'Session pane opened.' : 'Session pane closed.' }
+    return { text: (await togglePane($)) ? 'Details pane opened.' : 'Details pane closed.' }
   })
 
   on('turn.step', async function* ($, e, next) {
