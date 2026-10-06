@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { ElementConstructor, EngineInterface, Register, TextProps } from 'claude-code'
 
 import type { AgentRun, AgentStatus, Panel, Repo, Tokens } from '../types'
 import { costumeOf, roleName } from './sprites'
@@ -54,9 +54,17 @@ const TITLE = 'Session'
 const inputOf = (u: StepUsage): number =>
   (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)
 
-const cellBar = (pct: number, width: number): string => {
+// The terminal's framed RPG gauge: solid blocks in the gem colour on a dim track, between frame edges.
+const termGauge = (Text: ElementConstructor<TextProps>, pct: number, width: number, color: string) => {
   const lit = Math.round((Math.max(0, Math.min(100, pct)) / 100) * width)
-  return '▰'.repeat(lit) + '▱'.repeat(Math.max(0, width - lit))
+  return (
+    <Text>
+      <Text dimColor>▕</Text>
+      <Text color={color}>{'█'.repeat(lit)}</Text>
+      <Text dimColor>{'░'.repeat(Math.max(0, width - lit))}</Text>
+      <Text dimColor>▏</Text>
+    </Text>
+  )
 }
 
 // What a subagent's tool call is aimed at, for its "now doing" line.
@@ -251,7 +259,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" gap={2}>
         <Text>
-          <Text color={lv.color}>{cellBar(pct, width)}</Text> <Text bold>{Math.round(pct)}%</Text> <Text color={lv.color}>{lv.word}</Text>
+          {termGauge(Text, pct, width, lv.color)} <Text bold>{Math.round(pct)}%</Text> <Text color={lv.color}>{lv.word}</Text>
         </Text>
         <Text>${cost.toFixed(2)}</Text>
         <Text dimColor>{modelName(model)}</Text>
@@ -374,7 +382,7 @@ export const register: Register = on => {
           </Text>
           <Text wrap="truncate-end">
             {'  '}
-            <Text color={color}>{cellBar(c, barW)}</Text>
+            {termGauge(Text, c, barW, a.status === 'running' && c >= 70 ? STATUS.moderate : color)}
             <Text dimColor>
               {' '}
               ctx {c}% · {fmtK(a.contextTokens)} ≈{fmtCost(a.costUsd ?? 0)} {fmtTime((a.endedAt ?? at) - a.startedAt)}
@@ -398,7 +406,7 @@ export const register: Register = on => {
             <Text bold>{Math.round(ctx.percent)}%</Text> <Text color={lv.color}>{lv.word}</Text>
             <Text dimColor>  {fmtTokens(ctx.tokens)} of {fmtTokens(ctx.window)}</Text>
           </Text>
-          <Text color={lv.color}>{cellBar(ctx.percent, width)}</Text>
+          {termGauge(Text, ctx.percent, width, lv.color)}
         </Box>
         <Box flexDirection="column">
           <Text>
