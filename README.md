@@ -13,6 +13,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License: MIT"></a>
 </p>
 
+<p align="center">
+  <img src="docs/campfire-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
+</p>
+
 <p align="center"><sub>Works in the terminal and in the Claude desktop app's Code tab. Type <code>/hud</code> to show or hide the pane.</sub></p>
 
 ## What it shows
@@ -42,10 +46,6 @@ The pane opens on its own when a session starts and when a subagent starts.
 ## The party
 
 Each subagent is drawn as a voxel Clawd. Each agent type has its own role in a fantasy party.
-
-<p align="center">
-  <img src="docs/campfire-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
-</p>
 
 | Agent type | Role | Motion while it runs |
 |---|---|---|
