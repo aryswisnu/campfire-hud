@@ -1,0 +1,11 @@
+{
+  "name": "session-hud",
+  "version": "0.1.0",
+  "description": "A live session HUD for Claude Code: context, spend, usage limits and repo status above the prompt, plus a side pane of running subagents drawn as pixel Clawds in anime costumes.",
+  "author": { "name": "aryswisnu", "url": "https://github.com/aryswisnu" },
+  "homepage": "https://github.com/aryswisnu/session-hud",
+  "repository": "https://github.com/aryswisnu/session-hud",
+  "license": "MIT",
+  "keywords": ["hud", "statusline", "subagents", "context", "usage"],
+  "types": "./types/index.d.ts"
+}

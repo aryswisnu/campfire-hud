@@ -1,0 +1,6 @@
+# Written by Claude Code when it loads the mod; Anthropic's declarations, not ours.
+.claude-plugin/types/
+node_modules/
+.DS_Store
+*.bak
+*.log
