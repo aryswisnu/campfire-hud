@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/session-hud.gif" alt="The session-hud pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
+  <img src="docs/band.gif" alt="The band above the prompt: the context gauge fills from 24% to 96% and turns from emerald to crimson, with the cost, model, branch, and 5-hour and weekly usage" width="900">
 </p>
 
 <h1 align="center">Session HUD</h1>
@@ -24,8 +24,6 @@
 - your 5-hour and weekly usage, shown as `—` until the API first reports them
 - a button that opens the side pane
 
-<img src="docs/band.gif" width="760" alt="The band above the prompt: the context gauge fills from 24% to 96% and turns from emerald to crimson, with the cost, model, branch, and 5-hour and weekly usage">
-
 **In the side pane** (`/hud` opens or closes it):
 - **Context:** a gauge with a tick every 10% of the window. On windows larger than 200K, a notch marks 200K tokens.
 - **Stats:** the amount spent, the time elapsed, and the tokens in and out
@@ -37,9 +35,17 @@ Every bar is a framed gauge. Its colour is a gem that changes as it fills: emera
 
 The pane opens on its own when a session starts and when a subagent starts.
 
+**In the terminal**, the band and the pane draw as text with the same figures and colours:
+
+<img src="docs/terminal.png" width="760" alt="The terminal version: the pane on the right lists context, spend, limits, repo status and each subagent with its role, model, context bar, cost, time and current tool; the band sits above the prompt">
+
 ## The party
 
 Each subagent is drawn as a voxel Clawd. Each agent type has its own role in a fantasy party.
+
+<p align="center">
+  <img src="docs/session-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
+</p>
 
 | Agent type | Role | Motion while it runs |
 |---|---|---|
