@@ -72,23 +72,48 @@ When the system setting "reduce motion" is on, all animation stops.
 
 ## Install
 
-This plugin is a mod: it uses Claude Code's function-hook API. That API is early access, and the plugin was built on Claude Code 2.1.288.
+This plugin is a mod: it uses Claude Code's function-hook API. That API is early access. The plugin was built on Claude Code 2.1.288 and tested on 2.1.287.
+
+### Option A: from the marketplace
+
+Run these two commands in Claude Code:
+
+```
+/plugin marketplace add aryswisnu/campfire-hud
+/plugin install campfire-hud@campfire-hud
+```
+
+Then start a new session. The plugin stays installed and loads in every new session. To update it, run `/plugin marketplace update campfire-hud`.
+
+### Option B: ask Claude to install it
+
+Paste this prompt into Claude Code:
+
+```text
+Install the Claude Code plugin at https://github.com/aryswisnu/campfire-hud so it loads in every session.
+1. Clone it into ~/.claude/mods/campfire-hud, or run git pull there if the folder exists.
+2. In ~/.claude/settings.json, add ~/.claude/mods/campfire-hud to env.CLAUDE_CODE_PLUGIN_DIRS.
+   Keep every path already there, joined with ":". Keep every other setting.
+3. Show me the settings change, then tell me to start a new session.
+```
+
+### Option C: by hand
 
 1. Clone the repo:
    ```bash
    git clone https://github.com/aryswisnu/campfire-hud ~/.claude/mods/campfire-hud
    ```
-2. Load it in every session. To do this, add the folder to the `env` block of `~/.claude/settings.json`:
+2. Add the folder to the `env` block of `~/.claude/settings.json`:
    ```json
    { "env": { "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/campfire-hud" } }
    ```
-   To try it in one terminal session only, run this instead:
-   ```bash
-   claude --plugin-dir ~/.claude/mods/campfire-hud
-   ```
+   If `CLAUDE_CODE_PLUGIN_DIRS` already lists other folders, keep them. Join the paths with `:` (`;` on Windows).
+   To try it in one terminal session only, run `claude --plugin-dir ~/.claude/mods/campfire-hud` instead.
 3. Start a new session.
 
-For an SSH session, install it on the remote host the same way. Claude Code runs on that host.
+Use one option only. Each option loads its own copy of the plugin.
+
+For an SSH session, install it on the remote host. Claude Code runs on that host.
 
 ## Good to know
 

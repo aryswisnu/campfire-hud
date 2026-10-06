@@ -1,0 +1,15 @@
+{
+  "name": "campfire-hud",
+  "description": "campfire-hud, a live HUD plugin for Claude Code.",
+  "owner": {
+    "name": "aryswisnu",
+    "url": "https://github.com/aryswisnu"
+  },
+  "plugins": [
+    {
+      "name": "campfire-hud",
+      "source": "./",
+      "description": "A live HUD for Claude Code: context, spend, usage limits and repo status in RPG gauges, and your subagents as a fantasy party around a campfire."
+    }
+  ]
+}
