@@ -222,11 +222,20 @@ const limitSlot = (x: number, label: string, l: Limit | undefined, isLeft: boole
 
 export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false): string => {
   const lv = levelOf(c.percent)
-  // The strip gives way to the usage slots and the head figures on a narrow band.
   // A slot is wider in battery mode, for the word "left".
   const SLOT = isLeft ? 160 : 130
+  const slotsX = W - SLOT * BAND_LIMITS.length
+  const slots = BAND_LIMITS.map(([kind, label], i) => limitSlot(slotsX + SLOT * i, label, limits.find(l => l.kind === kind), isLeft)).join('')
+
+  const head = `<tspan class="i" font-weight="600">${pctText(c.percent, isLeft)}</tspan><tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan><tspan dx="16" class="i">$${cost.toFixed(2)}</tspan>`
+  const headChars = `${pctText(c.percent, isLeft)} ${lv.word} $${cost.toFixed(2)}`.length
+  const optional = [modelName(model), branch ? fit(branch, 12, W * 0.25) : ''].filter(Boolean)
+  const widthOf = (parts: string[]) => (headChars + parts.join('').length) * 7 + 22 + parts.length * 16
+
+  // The strip shrinks first to keep the model and branch, then gives way to the slots and the head figures.
+  const spare = slotsX - widthOf(optional) - 26
   const room = W - SLOT * BAND_LIMITS.length - 200
-  const stripW = room >= 40 ? Math.min(160, room) : 0
+  const stripW = spare >= 80 ? Math.min(160, spare) : room >= 40 ? Math.min(160, room) : 0
   const sx = isLeft ? HEART_W : 0
   const sw = stripW - sx
   const strip =
@@ -234,14 +243,8 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
       ? (isLeft ? heart(0, 7, 12) : '') + gauge(sx, 6, sw, 12, shownPct(c.percent, isLeft), lv.color, 10, isLeft) + compactMark(sx, 6, sw, 12, c, isLeft, false)
       : ''
   const x0 = stripW ? stripW + 10 : 0
-  const slotsX = W - SLOT * BAND_LIMITS.length
-  const slots = BAND_LIMITS.map(([kind, label], i) => limitSlot(slotsX + SLOT * i, label, limits.find(l => l.kind === kind), isLeft)).join('')
 
   // Optional parts drop from the end until the left side clears the usage slots.
-  const head = `<tspan class="i" font-weight="600">${pctText(c.percent, isLeft)}</tspan><tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan><tspan dx="16" class="i">$${cost.toFixed(2)}</tspan>`
-  const headChars = `${pctText(c.percent, isLeft)} ${lv.word} $${cost.toFixed(2)}`.length
-  const optional = [modelName(model), branch ? fit(branch, 12, W * 0.25) : ''].filter(Boolean)
-  const widthOf = (parts: string[]) => (headChars + parts.join('').length) * 7 + 22 + parts.length * 16
   while (optional.length && x0 + widthOf(optional) + 16 > slotsX) optional.pop()
   const tail = optional.map(p => `<tspan dx="16" class="m">${xml(p)}</tspan>`).join('')
   return svg(W, 24, `${strip}<text x="${x0}" y="16" font-size="12">${head}${tail}</text>${slots}`)

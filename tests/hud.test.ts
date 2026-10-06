@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { DETAIL_H, fireLevel, sceneSvg } from '../hooks/agents'
-import { contextSvg, shownPct } from '../hooks/desktop'
+import { bandSvg, contextSvg, shownPct } from '../hooks/desktop'
 import { parseShortstat, parseStatus } from '../hooks/register'
 import type { AgentRun } from '../types'
 
@@ -187,4 +187,14 @@ test('battery mode mirrors the bar and the auto-compact marker', () => {
   const c = { percent: 24, tokens: 240_000, window: 1_000_000, compactAt: 834_000 }
   expect(contextSvg(360, c, false)).toContain('x="299.2"')
   expect(contextSvg(360, c, true)).toContain('x="72.1"')
+})
+
+// Battery mode widens the usage slots; the model and branch must still fit on a normal band.
+test('the band keeps the model and branch in both modes', () => {
+  const limits = [{ kind: 'five_hour', percentUsed: 52 }, { kind: 'seven_day', percentUsed: 22 }] as never
+  for (const isLeft of [false, true]) {
+    const band = bandSvg(760, 'claude-opus-5-5', { percent: 60, tokens: 600_000, window: 1_000_000 }, 14.44, 'main', limits, isLeft)
+    expect(band).toContain('Opus 5.5')
+    expect(band).toContain('>main<')
+  }
 })

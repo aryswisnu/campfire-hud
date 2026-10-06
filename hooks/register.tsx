@@ -275,7 +275,7 @@ export const register: Register = on => {
       <Button
         key="hud-toggle"
         plain
-        label={running ? `${running} running` : list.length ? `${list.length} subagents` : 'Session'}
+        label={running ? `${running} running` : list.length ? `${list.length} subagents` : 'Details'}
         onPress={() => void togglePane($)}
       />
     )
