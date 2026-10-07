@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { DETAIL_H, fireLevel, sceneSvg } from '../hooks/agents'
+import { DETAIL_H, doneSvg, fireLevel, LINE_H, sceneSvg } from '../hooks/agents'
 import { bandSvg, contextSvg, shownPct } from '../hooks/desktop'
 import { parseShortstat, parseStatus } from '../hooks/register'
 import type { AgentRun } from '../types'
@@ -75,8 +75,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-// The list shows one running agent in full; Open must move the full view to another.
-test('desktop: Open shows another running agent in full', async ($, on) => {
+// The list shows one running agent in full; Open must expand the clicked agent in its own place.
+test('desktop: Open expands the agent in place and keeps the order', async ($, on) => {
   mock.clock(on, { now: 1_000 })
   on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 1, window: 200_000, percent: 1 }, rateLimits: [], cost: { usd: 0 } } }))
   on('session.model', () => ({ value: 'claude-opus-5-5' }))
@@ -85,39 +85,50 @@ test('desktop: Open shows another running agent in full', async ($, on) => {
   let n = 0
   on('agent.spawn', () => ({ model: 'claude-sonnet-5-5', agentId: `a${++n}` }))
 
-  await $.agent.spawn({ ...SPAWN, tool_use_id: 't1', description: 'Older task' } as never)
-  await $.agent.spawn({ ...SPAWN, tool_use_id: 't2', description: 'Newer task', subagentType: 'Plan' } as never)
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 't1', description: 'Oldest task' } as never)
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 't2', description: 'Middle task', subagentType: 'Plan' } as never)
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 't3', description: 'Newest task', subagentType: 'general-purpose' } as never)
   const ui = await $.ui.mount({ plugin: 'campfire-hud', surface: 'desktop', component: 'Pane', requestId: 'campfire-hud', props: PANE })
-  const detail = async () => JSON.stringify((await ui.findAll({ type: 'Svg' })).filter(x => x.props.height === DETAIL_H).map(x => x.props.source))
-  expect(await detail()).toContain('Newer task')
+  // Each running agent as [task, isExpanded], top to bottom.
+  const rows = async () =>
+    (await ui.findAll({ type: 'Svg' }))
+      .filter(x => x.props.height === DETAIL_H || x.props.height === LINE_H)
+      .map(x => [/(Oldest|Middle|Newest) task/.exec(String(x.props.source))?.[1], x.props.height === DETAIL_H])
+  expect(await rows()).toEqual([['Newest', true], ['Middle', false], ['Oldest', false]])
 
   await ui.press({ key: 'open-a1' })
-  expect(await detail()).toContain('Older task')
+  expect(await rows()).toEqual([['Newest', false], ['Middle', false], ['Oldest', true]])
 })
 
 const run = (id: string, type: string, status: AgentRun['status']): AgentRun => ({
   id, type, description: id, model: 'claude-haiku-4-5', status, startedAt: 0, contextTokens: 0, tokens: 0, lastTool: '',
 })
 
-// The fire tracks how many agents work together, and goes out when none do.
-test('the campfire grows with the party and goes out when it is done', () => {
+// The fire tracks how many agents work together. When none run, the camp waits again.
+test('the campfire grows with the party and the camp empties when it is done', () => {
   expect([0, 1, 2, 3, 4, 5, 9].map(fireLevel)).toEqual([0, 1, 1, 2, 2, 3, 3])
   const awake = sceneSvg(360, [run('a', 'Explore', 'running')], [], new Map())
   expect(awake).toContain('class="fl"')
-  expect(awake).not.toContain('class="zz"')
-  const asleep = sceneSvg(360, [], [run('a', 'Explore', 'done'), run('b', 'Plan', 'failed')], new Map())
-  expect(asleep).not.toContain('class="fl"')
-  expect(asleep.match(/class="zz"/g)?.length).toBe(1)
+  expect(awake).not.toContain('class="tw"')
+  const rested = sceneSvg(360, [], [run('a', 'Explore', 'done'), run('b', 'Plan', 'failed')], new Map())
+  expect(rested).not.toContain('class="fl"')
+  expect(rested).not.toContain('class="zz"')
+  expect(rested).toContain('class="tw"')
+  expect(rested).toContain('The party is resting')
 })
 
-// Before any agent starts, the camp must read as not started, not as a party that went to sleep.
+// Before any agent starts, the camp says so instead of saying the party rests.
 test('the camp waits, unlit, before the first agent', () => {
   const waiting = sceneSvg(360, [], [], new Map())
-  const asleep = sceneSvg(360, [], [run('a', 'Explore', 'done')], new Map())
   expect(waiting).toContain('class="tw"')
   expect(waiting).toContain('No agents yet')
   expect(waiting).not.toContain('class="fl"')
-  expect(asleep).not.toContain('class="tw"')
+})
+
+// The sleeping faces move to the Finished list; a failed agent keeps its crossed eyes.
+test('finished rows sleep, failed rows do not', () => {
+  expect(doneSvg(360, run('a', 'Explore', 'done'), 0)).toContain('class="zz"')
+  expect(doneSvg(360, run('b', 'Plan', 'failed'), 0)).not.toContain('class="zz"')
 })
 
 // The gauges must show where auto-compact runs, and nothing when it is off.

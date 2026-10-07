@@ -1,9 +1,7 @@
 import type { AgentRun } from '../types'
 import { fit, GAUGE_CSS, gauge, modelName, shownPct, xml } from './desktop'
 import { avatar, costumeColor, costumeOf, roleName, SPRITE_CSS } from './sprites'
-import type { Mood } from './sprites'
 
-const moodOf = (a: AgentRun): Mood => (a.status === 'running' ? 'focus' : a.status === 'done' ? 'happy' : 'dizzy')
 const WARN_AT = 70
 const WARN = '#F2A33A'
 const isWarning = (a: AgentRun): boolean => a.status === 'failed' || (a.status === 'running' && ctxOf(a) >= WARN_AT)
@@ -132,10 +130,8 @@ const RING_MAX = 8
  * bigger. With nobody running the fire is out and the finished agents sleep.
  */
 export const sceneSvg = (W: number, running: AgentRun[], finished: AgentRun[], names: Map<string, string>): string => {
-  const isAsleep = running.length === 0
-  const all = isAsleep ? finished : running
-  const party = all.slice(0, RING_MAX)
-  const more = all.length - party.length
+  const party = running.slice(0, RING_MAX)
+  const more = running.length - party.length
   const cx = W / 2
   const cy = 120
   const rx = Math.min(200, W / 2 - 52)
@@ -147,7 +143,7 @@ export const sceneSvg = (W: number, running: AgentRun[], finished: AgentRun[], n
       return { a, x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) }
     })
     .sort((p, q) => p.y - q.y)
-  const camp = all.length === 0 ? emptyCamp(W, cx, cy) : fire(fireLevel(running.length), cx, cy - 4)
+  const camp = running.length === 0 ? emptyCamp(W, cx, cy) : fire(fireLevel(running.length), cx, cy - 4)
   let body = ''
   let isFireDrawn = false
   for (const { a, x, y } of spots) {
@@ -156,14 +152,16 @@ export const sceneSvg = (W: number, running: AgentRun[], finished: AgentRun[], n
       isFireDrawn = true
     }
     const s = 1.35 + (0.5 * (y - (cy - ry))) / (2 * ry)
-    const mood: Mood = isAsleep && a.status === 'done' ? 'sleep' : moodOf(a)
     const name = names.get(a.id) ?? roleName(costumeOf(a.type))
-    body += avatar(x - 20 * s, y - 31.5 * s + (isAsleep ? 12 + 2 * s : 12), costumeOf(a.type), mood, !isAsleep, isWarning(a), s)
-    body += `<text x="${x}" y="${y + 26}" font-size="11" font-weight="600" text-anchor="middle" fill="${agentColor(a)}"${isAsleep ? ' opacity=".6"' : ''}>${xml(name)}</text>`
+    body += avatar(x - 20 * s, y - 31.5 * s + 12, costumeOf(a.type), 'focus', true, isWarning(a), s)
+    body += `<text x="${x}" y="${y + 26}" font-size="11" font-weight="600" text-anchor="middle" fill="${agentColor(a)}">${xml(name)}</text>`
   }
   if (!isFireDrawn) body += camp
   if (more > 0) body += `<text class="s" x="${W - 12}" y="22" font-size="12" text-anchor="end">+${more} more</text>`
-  if (all.length === 0) body += `<text class="s" x="${cx}" y="${SCENE_H - 22}" font-size="12" text-anchor="middle">No agents yet. They gather here when Claude starts one.</text>`
+  if (running.length === 0) {
+    const line = finished.length ? 'The party is resting. They gather again when Claude starts one.' : 'No agents yet. They gather here when Claude starts one.'
+    body += `<text class="s" x="${cx}" y="${SCENE_H - 22}" font-size="12" text-anchor="middle">${line}</text>`
+  }
   return svg(W, SCENE_H, `<rect class="gr" x="0" y="0" width="${W}" height="${SCENE_H}" rx="10"/>${body}`)
 }
 
@@ -223,7 +221,7 @@ export const doneSvg = (W: number, a: AgentRun, at: number): string => {
   return svg(
     W,
     DONE_H,
-    `${avatar(-2, 2, c, moodOf(a), false, isWarning(a), 1.05)}
+    `${avatar(-2, 2, c, a.status === 'done' ? 'sleep' : 'dizzy', false, isWarning(a), 1.05)}
 <text class="t q" x="46" y="17" font-size="13.5">${xml(fit(a.description || a.type, 13, W - 150))}</text>
 <text x="46" y="33" font-size="11"><tspan fill="${color}" font-weight="600">${roleName(c)}</tspan><tspan class="s">   ${xml(modelName(a.model))}${a.status === 'failed' ? '   failed' : ''}</tspan></text>
 <text class="s" x="${W}" y="17" font-size="11.5" text-anchor="end">≈${fmtCost(a.costUsd ?? 0)}   ${elapsed(a, at)}</text>`,

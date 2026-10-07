@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/campfire-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start and goes out when they finish" width="392">
+  <img src="docs/campfire-hud.gif" alt="The desktop pane: a context gauge, then voxel Clawds around a campfire that grows as subagents start, then an empty camp again when they finish" width="392">
 </p>
 
 <p align="center"><sub>Works in the terminal and in the Claude desktop app's Code tab. Type <code>/hud</code> to show or hide the pane.</sub></p>
@@ -68,11 +68,11 @@ Each subagent is drawn as a voxel Clawd. Each agent type has its own role in a f
 | amber `!` | running with 70% or more of its context used, or failed |
 | closed eyes | done |
 | `✕ ✕` | failed |
-| closed eyes and `z z` | asleep: every agent has finished |
+| closed eyes and `z z` | asleep in the Finished list: the agent is done |
 
-**The campfire.** Before the first agent starts, the camp waits: a tent, a ring of stones and an unlit stack of logs under the stars. The running agents stand in a ring around a fire. The fire grows with the number of agents that run at the same time: small for 1 or 2, medium for 3 or 4, and big for 5 or more. When the last agent finishes, the fire goes out and the party sleeps. The ring shows up to 8 agents. A count shows the rest.
+**The campfire.** Before the first agent starts, the camp waits: a tent, a ring of stones and an unlit stack of logs under the stars. The running agents stand in a ring around a fire. The fire grows with the number of agents that run at the same time: small for 1 or 2, medium for 3 or 4, and big for 5 or more. When the last agent finishes, the party leaves the fire and the camp waits again. The ring shows up to 8 agents. A count shows the rest.
 
-**The list.** Under the fire, the newest running agent is shown in full: its task, model and effort, context, cost, time and current tool. Every other running agent takes one line. Press **Open** on a line to show that agent in full. Finished agents follow, with **Hide** to fold them.
+**The list.** Under the fire, the newest running agent is shown in full: its task, model and effort, context, cost, time and current tool. Every other running agent takes one line. Press **Open** on a line to expand that agent in its place; the order does not change. Finished agents follow, asleep, with **Hide** to fold them.
 
 When the system setting "reduce motion" is on, all animation stops.
 

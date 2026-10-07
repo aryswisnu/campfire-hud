@@ -373,30 +373,29 @@ export const register: Register = on => {
           <Svg source={repoSvg(W, model, r, at)} alt={r ? `${modelName(model)} on ${r.branch}` : modelName(model)} width={W} height={42} />
           <Svg
             source={sceneSvg(W, running, finished, names)}
-            alt={list.length === 0 ? 'No agents yet' : running.length ? `${running.map(nameOf).join(', ')} at the campfire` : 'The fire is out. Every agent has finished.'}
+            alt={list.length === 0 ? 'No agents yet' : running.length ? `${running.map(nameOf).join(', ')} at the campfire` : 'The party is resting. Every agent has finished.'}
             width={W}
             height={SCENE_H}
           />
           {list.length > 0 && (
             <Box flexDirection="column">
               <Svg source={summarySvg(W, running.length, finished.length, totals)} alt={`${summary}, ≈${fmtCost(totals.cost)}`} width={W} height={SUMMARY_H} />
-              {selected && (
-                <Svg
-                  key={`detail-${selected.id}`}
-                  source={detailSvg(W, selected, at, nameOf(selected), isLeft)}
-                  alt={`${nameOf(selected)}: ${selected.description}, ${ctxOf(selected)}% context, ${selected.lastTool}`}
-                  width={W}
-                  height={DETAIL_H}
-                />
-              )}
-              {running
-                .filter(a => a !== selected)
-                .map(a => (
+              {running.map(a =>
+                a === selected ? (
+                  <Svg
+                    key={`detail-${a.id}`}
+                    source={detailSvg(W, a, at, nameOf(a), isLeft)}
+                    alt={`${nameOf(a)}: ${a.description}, ${ctxOf(a)}% context, ${a.lastTool}`}
+                    width={W}
+                    height={DETAIL_H}
+                  />
+                ) : (
                   <Box key={a.id} flexDirection="row" alignItems="center" gap={1}>
                     <Svg source={lineSvg(W - 56, a, at, nameOf(a), isLeft)} alt={`${nameOf(a)}: ${a.description}, ${ctxOf(a)}% context`} width={W - 56} height={LINE_H} />
                     <Button key={`open-${a.id}`} plain dimColor label="Open" onPress={() => update($, panel, v => ({ ...v, selectedId: a.id }))} />
                   </Box>
-                ))}
+                ),
+              )}
               {finishedHeader}
               {!p.isDoneCollapsed &&
                 finished.map(a => <Svg key={a.id} source={doneSvg(W, a, at)} alt={`${a.description}: ${a.status}`} width={W} height={DONE_H} />)}
