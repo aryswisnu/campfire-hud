@@ -127,6 +127,7 @@ For an SSH session, install it on the remote host. Claude Code runs on that host
 - **Subagent cost is an estimate:** it is calculated from token counts and the list prices in `PRICES` in `hooks/agents.ts`. Update that table when prices change.
 - **Subagent context % is an estimate too:** the plugin assumes a 200K window for Haiku and a 1M window for every other model.
 - **Session figures are exact:** the session cost, the context and the usage limits come from Claude Code itself.
+- **Where the HUD draws:** in the `claude` terminal and in the desktop app's Code tab for a local or SSH session. A cloud session at claude.ai/code does not load your plugins and does not draw a mod's band or pane, so run `claude --teleport <session>` to see it locally. With Remote Control, the HUD draws only on the machine that runs Claude Code, not in the phone or web view.
 
 ## Develop
 
