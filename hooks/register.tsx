@@ -148,7 +148,7 @@ async function togglePane($: EngineInterface): Promise<boolean> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    await $.command.register({ name: 'hud', description: 'Show or hide the session pane; /hud left or /hud used switches every bar' })
+    await $.command.register({ name: 'hud', description: 'Show or hide the Details pane; /hud left or /hud used switches every bar; /hud probe checks what this host draws' })
     if ((await $.store.get(MODE_KEY).catch(() => undefined)) === 'left') await update($, panel, v => ({ ...v, isLeft: true }))
     void $.ui.open({ id: PANE, title: TITLE })
     void refreshRepo($)
@@ -173,6 +173,16 @@ export const register: Register = on => {
 
   on('command.run', { command: 'hud' }, async ($, e) => {
     const mode = e.args.trim().toLowerCase()
+    // Shows which surfaces the session reports, for hosts where the band and pane do not appear.
+    if (mode === 'probe') {
+      const surfaces = await $.session.surfaces()
+      const opened = await $.ui.open({ id: PANE, title: TITLE })
+      $.ui.toast('campfire-hud probe: this is a toast')
+      $.ui.status('campfire-hud probe: this is a status line')
+      $.clock.after(20_000, () => $.ui.status(undefined))
+      const pane = opened.isPlaced ? 'placed' : `waits undrawn (${opened.reason})`
+      return { text: `Surfaces: ${surfaces.length ? surfaces.join(', ') : 'none'}. Pane: ${pane}. A toast and a status line were sent; the status line clears in 20 s.` }
+    }
     if (mode === 'left' || mode === 'used') {
       await setLeft($, mode === 'left')
       return { text: mode === 'left' ? 'The bars now show what is left.' : 'The bars now show what is used.' }

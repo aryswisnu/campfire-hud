@@ -235,3 +235,14 @@ test('terminal: the band fits a narrow terminal on one line', async ($, on) => {
   expect(wide).toContain('Sonnet 5.5')
   expect(wide).toContain('Week 81%')
 })
+
+// The probe must say what the host reports, so a host that draws nothing can be told apart from a plugin that did not load.
+test('/hud probe reports the surfaces and why the pane waits', async ($, on) => {
+  on('session.surfaces', () => ({ value: [] }) as never)
+  on('ui.open', () => ({ value: { isPlaced: false, reason: 'no surface places panes' } }) as never)
+  on('ui.toast', () => ({ value: undefined }) as never)
+  on('ui.status', () => ({ value: undefined }) as never)
+  const out = await $.command.run({ command: 'hud', args: 'probe' } as never)
+  expect(JSON.stringify(out)).toContain('Surfaces: none')
+  expect(JSON.stringify(out)).toContain('waits undrawn (no surface places panes)')
+})
