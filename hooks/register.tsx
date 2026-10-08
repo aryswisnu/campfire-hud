@@ -271,11 +271,12 @@ export const register: Register = on => {
       const l = usage.rateLimits.find(x => x.kind === kind)
       return `${label} ${l ? pctText(l.percentUsed, isLeft) : '—'}`
     }).join('  ')
+    const label = running ? `${running} running` : list.length ? `${list.length} subagents` : 'Details'
     const toggle = (
       <Button
         key="hud-toggle"
         plain
-        label={running ? `${running} running` : list.length ? `${list.length} subagents` : 'Details'}
+        label={label}
         onPress={() => void togglePane($)}
       />
     )
@@ -296,16 +297,25 @@ export const register: Register = on => {
       )
     }
 
-    const width = Math.max(6, Math.min(20, (e.props.bodyColumns || 80) - 60))
+    const cols = e.props.bodyColumns || 80
+    const width = Math.max(6, Math.min(20, cols - 60))
+    const head = `${pctText(pct, isLeft)} ${lv.word}`
+    const money = `$${cost.toFixed(2)}`
+    const branch = r && r.branch !== '' ? r.branch.slice(0, 24) : ''
+    // Parts that do not fit drop instead of wrapping, the branch first, then the model, the limits, the cost.
+    const optional = [money, bandLimits, modelName(model), branch].filter(Boolean)
+    const sizeOf = (parts: string[]) => width + 3 + head.length + label.length + parts.reduce((n, p) => n + p.length + 2, 2)
+    while (optional.length && sizeOf(optional) > cols) optional.pop()
+    const shows = (part: string) => part !== '' && optional.includes(part)
     return (
       <Box flexDirection="row" gap={2}>
         <Text>
           {termGauge(Text, shownPct(pct, isLeft), width, lv.color, compactPct, isLeft)} <Text bold>{pctText(pct, isLeft)}</Text> <Text color={lv.color}>{lv.word}</Text>
         </Text>
-        <Text>${cost.toFixed(2)}</Text>
-        <Text dimColor>{modelName(model)}</Text>
-        {r && r.branch !== '' && <Text dimColor wrap="truncate-end">{r.branch.slice(0, 24)}</Text>}
-        <Text dimColor>{bandLimits}</Text>
+        {shows(money) && <Text>{money}</Text>}
+        {shows(modelName(model)) && <Text dimColor>{modelName(model)}</Text>}
+        {shows(branch) && <Text dimColor>{branch}</Text>}
+        {shows(bandLimits) && <Text dimColor>{bandLimits}</Text>}
         {toggle}
       </Box>
     )

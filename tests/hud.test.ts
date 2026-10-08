@@ -209,3 +209,29 @@ test('the band keeps the model and branch in both modes', () => {
     expect(band).toContain('>main<')
   }
 })
+
+// A narrow terminal must not wrap the band into columns: it drops parts instead of breaking them.
+test('terminal: the band fits a narrow terminal on one line', async ($, on) => {
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 190_000, window: 1_000_000, percent: 19 }, rateLimits: [{ kind: 'five_hour', percentUsed: 1 }, { kind: 'seven_day', percentUsed: 81 }], cost: { usd: 0.87 } } }))
+  on('session.model', () => ({ value: 'claude-sonnet-5-5' }))
+  // Every text the band draws, in order, as one line with the row's 2-column gaps.
+  const line = async (bodyColumns: number) => {
+    const tree = await (await $.ui.mount({ plugin: 'campfire-hud', surface: 'terminal', component: 'AbovePrompt', requestId: `b${bodyColumns}`, props: { hasSurvey: false, bodyColumns } as never })).drawn()
+    type Node = { props?: { label?: string }; children?: unknown }
+    const text = (n: unknown): string =>
+      typeof n === 'string' || typeof n === 'number' ? String(n)
+      : Array.isArray(n) ? n.map(text).join('')
+      : n && typeof n === 'object' ? ((n as Node).props?.label ?? text((n as Node).children))
+      : ''
+    const row = (tree as unknown as Node).children as unknown[]
+    return row.filter(Boolean).map(text).filter(s => s !== '').join('  ')
+  }
+  const narrow = await line(36)
+  expect(narrow.length).toBeLessThanOrEqual(36)
+  expect(narrow).toContain('19%')
+  expect(narrow).toContain('$0.87')
+  expect(narrow).toContain('Details')
+  const wide = await line(160)
+  expect(wide).toContain('Sonnet 5.5')
+  expect(wide).toContain('Week 81%')
+})
