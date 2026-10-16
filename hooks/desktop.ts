@@ -228,12 +228,11 @@ export const resetText = (l: Limit | undefined, now: number): string => {
 // Estimated width of 12px text, to lay the band out without measuring it; bold runs 8% wider.
 const textW = (s: string, isBold = false): number =>
   [...s].reduce((w, ch) => w + (' :.,ilt|'.includes(ch) ? 3.5 : ch === '↻' ? 12 : '%MW—'.includes(ch) ? 11 : /[A-Z]/.test(ch) ? 8 : 7), 0) * (isBold ? 1.08 : 1)
-const BAR_W = 44
 const STRIP_MIN = 80
 
-type BandPart = 'branch' | 'model' | 'strip' | 'bars' | 'word' | 'cost' | 'resets'
+type BandPart = 'branch' | 'model' | 'strip' | 'word' | 'cost' | 'resets'
 // The band drops parts in this order until it fits; the context share and both usage shares always stay.
-const DROP_ORDER: BandPart[] = ['branch', 'model', 'strip', 'bars', 'word', 'cost', 'resets']
+const DROP_ORDER: BandPart[] = ['branch', 'model', 'strip', 'word', 'cost', 'resets']
 
 export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false, now = 0): string => {
   const lv = levelOf(c.percent)
@@ -249,7 +248,7 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
   if (!br) on.delete('branch')
 
   const slotW = (s: (typeof slots)[number]): number =>
-    textW(s.label) + 6 + (on.has('bars') ? BAR_W + 6 : 0) + textW(s.pct, true) + (on.has('resets') && s.reset ? 6 + textW(s.reset) : 0)
+    textW(s.label) + 6 + textW(s.pct, true) + (on.has('resets') && s.reset ? 6 + textW(s.reset) : 0)
   const rightW = (): number => slots.reduce((sum, s) => sum + slotW(s), 0) + 16 * (slots.length - 1)
   const leftW = (): number =>
     (on.has('strip') ? STRIP_MIN + 10 : 0) +
@@ -279,14 +278,11 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
   let x = W - rightW()
   const right = slots
     .map(s => {
-      const pct = s.l ? Math.max(0, Math.min(100, s.l.percentUsed)) : 0
+      // The share takes its gem colour in place of a gauge, so the band keeps one graphic.
+      const color = s.l ? levelOf(s.l.percentUsed).color : ''
       let out = t(x, 16, 'm', 12, s.label)
-      let px = x + textW(s.label) + 6
-      if (on.has('bars')) {
-        out += gauge(px, 8, BAR_W, 8, s.l ? shownPct(pct, isLeft) : 0, levelOf(pct).color, 5, isLeft)
-        px += BAR_W + 6
-      }
-      out += t(px, 16, 'i', 12, s.pct, ' font-weight="600"')
+      const px = x + textW(s.label) + 6
+      out += t(px, 16, color ? '' : 'i', 12, s.pct, ` font-weight="600"${color ? ` style="fill:${color}"` : ''}`)
       if (on.has('resets') && s.reset) out += t(px + textW(s.pct, true) + 6, 16, 'm', 12, s.reset)
       x += slotW(s) + 16
       return out

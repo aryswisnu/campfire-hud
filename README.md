@@ -21,11 +21,11 @@
 
 ## What it shows
 
-**Above the prompt** (always on; in a narrow desktop band the branch, the model, the context gauge, the usage gauges, the status and the cost give way in that order, so the parts never overlap):
+**Above the prompt** (always on; in a narrow desktop band the branch, the model, the context gauge, the status, the cost and the reset times give way in that order, so the parts never overlap):
 - the context window as a gauge, its percentage and a status from Good to Critical, with an amber marker where auto-compact runs
 - the session cost and the model
 - the git branch, when there is one
-- your 5-hour and weekly usage, shown as `—` until the API first reports them, each with the time it resets (`↻14:30`, or `↻Tue 09:00` when it is more than a day away)
+- your 5-hour and weekly usage, coloured from emerald to crimson as it fills and shown as `—` until the API first reports them, each with the time it resets (`↻14:30`, or `↻Tue 09:00` when it is more than a day away)
 - a button that opens the side pane
 
 <p align="center"><img src="docs/band.gif" width="900" alt="The band above the prompt: the context gauge, cost, model, branch and the 5-hour and weekly gauges fill up, then switch to battery mode and drain"></p>
