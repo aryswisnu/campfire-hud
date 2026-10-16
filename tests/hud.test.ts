@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { DETAIL_H, doneSvg, fireLevel, LINE_H, sceneSvg } from '../hooks/agents'
-import { bandSvg, contextSvg, shownPct } from '../hooks/desktop'
+import { bandSvg, contextSvg, fmtClock, limitsSvg, shownPct } from '../hooks/desktop'
 import { parseShortstat, parseStatus } from '../hooks/register'
 import type { AgentRun } from '../types'
 
@@ -59,7 +59,8 @@ test('git porcelain and shortstat parse into the REPO counts', () => {
 // The band must always carry both usage windows, even before the API reports one.
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`${surface}: band shows 5h and weekly usage with and without readings`, async ($, on) => {
-    let limits: { kind: string; percentUsed: number }[] = []
+    mock.clock(on, { now: 1_000 })
+    let limits: { kind: string; percentUsed: number; resetsAt?: string }[] = []
     on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 1, window: 1_000_000, percent: 21 }, rateLimits: limits, cost: { usd: 4.19 } } }))
     on('session.model', () => ({ value: 'claude-opus-5-5' }))
     const band = { hasSurvey: false, bodyColumns: 180 } as never
@@ -68,9 +69,9 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(empty).toContain('5h —')
     expect(empty).toContain('Week —')
 
-    limits = [{ kind: 'five_hour', percentUsed: 12 }, { kind: 'seven_day', percentUsed: 7.4 }]
+    limits = [{ kind: 'five_hour', percentUsed: 12, resetsAt: new Date(3_600_000).toISOString() }, { kind: 'seven_day', percentUsed: 7.4 }]
     const read = JSON.stringify(await (await $.ui.mount({ plugin: 'campfire-hud', surface, component: 'AbovePrompt', requestId: 'b2', props: band })).drawn())
-    expect(read).toContain('5h 12%')
+    expect(read).toContain(`5h 12% ↻${fmtClock(3_600_000)}`)
     expect(read).toContain('Week 7%')
   })
 }
@@ -212,6 +213,7 @@ test('the band keeps the model and branch in both modes', () => {
 
 // A narrow terminal must not wrap the band into columns: it drops parts instead of breaking them.
 test('terminal: the band fits a narrow terminal on one line', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
   on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 190_000, window: 1_000_000, percent: 19 }, rateLimits: [{ kind: 'five_hour', percentUsed: 1 }, { kind: 'seven_day', percentUsed: 81 }], cost: { usd: 0.87 } } }))
   on('session.model', () => ({ value: 'claude-sonnet-5-5' }))
   // Every text the band draws, in order, as one line with the row's 2-column gaps.
@@ -245,4 +247,36 @@ test('/hud probe reports the surfaces and why the pane waits', async ($, on) => 
   const out = await $.command.run({ command: 'hud', args: 'probe' } as never)
   expect(JSON.stringify(out)).toContain('Surfaces: none')
   expect(JSON.stringify(out)).toContain('waits undrawn (no surface places panes)')
+})
+
+// In a narrow pane the band drops its extras instead of drawing the usage slots over the head figures.
+test('a narrow band keeps every text inside its width, without overlap', () => {
+  const now = Date.parse('2026-10-16T08:00:00Z')
+  const fiveH = '2026-10-16T10:30:00Z'
+  const limits = [
+    { kind: 'five_hour', percentUsed: 13, resetsAt: fiveH },
+    { kind: 'seven_day', percentUsed: 77, resetsAt: '2026-10-20T08:00:00Z' },
+  ]
+  for (const isLeft of [false, true])
+    for (const W of [240, 300, 420, 600, 900]) {
+      const band = bandSvg(W, 'claude-opus-5-5', { percent: 22, tokens: 220_000, window: 1_000_000 }, 5.12, 'feature/long-branch-name', limits, isLeft, now)
+      const xs = [...band.matchAll(/<text[^>]* x="([\d.]+)"[^>]*>(.*?)<\/text>/g)].map(m => ({ x: Number(m[1]), text: (m[2] ?? '').replace(/<[^>]+>/g, '') }))
+      // The head text block comes first, then each slot's label, share and reset in order: each must start past the last one's end.
+      const head = xs[0]!
+      expect(xs[1]!.x).toBeGreaterThanOrEqual(head.x + head.text.length * 6.5)
+      for (let i = 2; i < xs.length; i++) expect(xs[i]!.x).toBeGreaterThanOrEqual(xs[i - 1]!.x + xs[i - 1]!.text.length * 6.5)
+      const last = xs[xs.length - 1]!
+      expect(last.x + last.text.length * 6.5).toBeLessThanOrEqual(W + 0.5)
+      if (W >= (isLeft ? 420 : 300)) expect(band).toContain(`↻${fmtClock(Date.parse(fiveH))}`)
+      if (W >= 900) expect(band).toContain('Opus 5.5')
+    }
+})
+
+test('usage windows show when they reset', () => {
+  const now = Date.parse('2026-10-16T08:00:00Z')
+  const soon = '2026-10-16T10:30:00Z'
+  const week = '2026-10-20T08:00:00Z'
+  const pane = limitsSvg(500, [{ kind: 'five_hour', percentUsed: 13, resetsAt: soon }, { kind: 'seven_day', percentUsed: 77, resetsAt: week }], false, now)
+  expect(pane).toContain(`↻${fmtClock(Date.parse(soon))}`)
+  expect(pane).toContain(`↻${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(week).getDay()]} ${fmtClock(Date.parse(week))}`)
 })

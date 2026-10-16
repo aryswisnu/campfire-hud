@@ -39,6 +39,7 @@ import {
   modelName,
   pctText,
   repoSvg,
+  resetText,
   shownPct,
   statsSvg,
   STATUS,
@@ -277,9 +278,10 @@ export const register: Register = on => {
     const lv = levelOf(pct)
     const cost = usage.cost?.usd ?? 0
     const running = list.filter(a => a.status === 'running').length
+    const at = await $.clock.now()
     const bandLimits = BAND_LIMITS.map(([kind, label]) => {
       const l = usage.rateLimits.find(x => x.kind === kind)
-      return `${label} ${l ? pctText(l.percentUsed, isLeft) : '—'}`
+      return [label, l ? pctText(l.percentUsed, isLeft) : '—', resetText(l, at)].filter(Boolean).join(' ')
     }).join('  ')
     const label = running ? `${running} running` : list.length ? `${list.length} subagents` : 'Details'
     const toggle = (
@@ -297,7 +299,7 @@ export const register: Register = on => {
       return (
         <Box flexDirection="row" alignItems="center" gap={1}>
           <Svg
-            source={bandSvg(W, model, { percent: pct, tokens: usage.context.tokens ?? 0, window: usage.context.window, compactAt: compact }, cost, r?.branch ?? '', usage.rateLimits, isLeft)}
+            source={bandSvg(W, model, { percent: pct, tokens: usage.context.tokens ?? 0, window: usage.context.window, compactAt: compact }, cost, r?.branch ?? '', usage.rateLimits, isLeft, at)}
             alt={`Context ${pctText(pct, isLeft)}, ${lv.word}. $${cost.toFixed(2)} spent. ${bandLimits}`}
             width={W}
             height={24}
@@ -384,7 +386,7 @@ export const register: Register = on => {
           <Svg source={statsSvg(W, cost, at - usage.startedAt, t)} alt={`$${cost.toFixed(2)} spent, ${fmtDuration(at - usage.startedAt)} elapsed`} width={W} height={46} />
           {usage.rateLimits.length > 0 && (
             <Svg
-              source={limitsSvg(W, usage.rateLimits, isLeft)}
+              source={limitsSvg(W, usage.rateLimits, isLeft, at)}
               alt={usage.rateLimits.map(l => `${limitName(l.kind)} ${Math.round(l.percentUsed)}%`).join(', ')}
               width={W}
               height={LIMITS_H}
@@ -486,7 +488,7 @@ export const register: Register = on => {
           </Text>
           <Text dimColor>
             {fmtTokens(t.input)} in  {fmtTokens(t.output)} out
-            {usage.rateLimits.map(l => `   ${limitName(l.kind)} ${pctText(l.percentUsed, isLeft)}`).join('')}
+            {usage.rateLimits.map(l => `   ${limitName(l.kind)} ${pctText(l.percentUsed, isLeft)} ${resetText(l, at)}`.trimEnd()).join('')}
           </Text>
         </Box>
         <Box flexDirection="column">

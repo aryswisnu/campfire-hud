@@ -170,11 +170,11 @@ export const statsSvg = (W: number, cost: number, elapsedMs: number, tk: Tokens)
   )
 }
 
-type Limit = { kind: string; percentUsed: number }
+type Limit = { kind: string; percentUsed: number; resetsAt?: string }
 
 export const LIMITS_H = 30
 
-export const limitsSvg = (W: number, limits: Limit[], isLeft = false): string => {
+export const limitsSvg = (W: number, limits: Limit[], isLeft = false, now = 0): string => {
   const gap = 16
   const each = (W - gap * (limits.length - 1)) / Math.max(1, limits.length)
   const body = limits
@@ -182,7 +182,9 @@ export const limitsSvg = (W: number, limits: Limit[], isLeft = false): string =>
       const x = i * (each + gap)
       const pct = Math.max(0, Math.min(100, l.percentUsed))
       const color = levelOf(pct).color
-      return `${t(x, 12, 'm', 11, limitName(l.kind))}${t(x + each, 12, 'i', 11, pctText(l.percentUsed, isLeft), ' text-anchor="end"')}
+      const pctS = pctText(l.percentUsed, isLeft)
+      const label = [limitName(l.kind), resetText(l, now)].filter(Boolean).join(' ')
+      return `${t(x, 12, 'm', 11, fit(label, 11, each - pctS.length * 7 - 8))}${t(x + each, 12, 'i', 11, pctS, ' text-anchor="end"')}
 ${gauge(x, 19, each, 8, shownPct(pct, isLeft), color, 10, isLeft)}`
     })
     .join('')
@@ -214,38 +216,81 @@ export const BAND_LIMITS: [string, string][] = [
   ['seven_day', 'Week'],
 ]
 
-const limitSlot = (x: number, label: string, l: Limit | undefined, isLeft: boolean): string => {
-  const barW = 44
-  const pct = l ? Math.max(0, Math.min(100, l.percentUsed)) : 0
-  return `${t(x, 16, 'm', 12, label)}${gauge(x + 38, 8, barW, 8, l ? shownPct(pct, isLeft) : 0, levelOf(pct).color, 5, isLeft)}${t(x + 38 + barW + 6, 16, 'i', 12, l ? pctText(l.percentUsed, isLeft) : '—', ' font-weight="600"')}`
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** When a window resets, as a wall-clock time, so it never goes stale between renders. */
+export const resetText = (l: Limit | undefined, now: number): string => {
+  const ms = l?.resetsAt ? Date.parse(l.resetsAt) : NaN
+  if (Number.isNaN(ms)) return ''
+  return `↻${ms - now < 86_400_000 ? '' : DAYS[new Date(ms).getDay()] + ' '}${fmtClock(ms)}`
 }
 
-export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false): string => {
+// Estimated width of 12px text, to lay the band out without measuring it; bold runs 8% wider.
+const textW = (s: string, isBold = false): number =>
+  [...s].reduce((w, ch) => w + (' :.,ilt|'.includes(ch) ? 3.5 : ch === '↻' ? 12 : '%MW—'.includes(ch) ? 11 : /[A-Z]/.test(ch) ? 8 : 7), 0) * (isBold ? 1.08 : 1)
+const BAR_W = 44
+const STRIP_MIN = 80
+
+type BandPart = 'branch' | 'model' | 'strip' | 'bars' | 'word' | 'cost' | 'resets'
+// The band drops parts in this order until it fits; the context share and both usage shares always stay.
+const DROP_ORDER: BandPart[] = ['branch', 'model', 'strip', 'bars', 'word', 'cost', 'resets']
+
+export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false, now = 0): string => {
   const lv = levelOf(c.percent)
-  // A slot is wider in battery mode, for the word "left".
-  const SLOT = isLeft ? 160 : 130
-  const slotsX = W - SLOT * BAND_LIMITS.length
-  const slots = BAND_LIMITS.map(([kind, label], i) => limitSlot(slotsX + SLOT * i, label, limits.find(l => l.kind === kind), isLeft)).join('')
+  const slots = BAND_LIMITS.map(([kind, label]) => {
+    const l = limits.find(x => x.kind === kind)
+    return { label, l, pct: l ? pctText(l.percentUsed, isLeft) : '—', reset: resetText(l, now) }
+  })
+  const head = pctText(c.percent, isLeft)
+  const money = `$${cost.toFixed(2)}`
+  const name = modelName(model)
+  const br = branch ? fit(branch, 12, W * 0.25) : ''
+  const on = new Set<BandPart>(DROP_ORDER)
+  if (!br) on.delete('branch')
 
-  const head = `<tspan class="i" font-weight="600">${pctText(c.percent, isLeft)}</tspan><tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan><tspan dx="16" class="i">$${cost.toFixed(2)}</tspan>`
-  const headChars = `${pctText(c.percent, isLeft)} ${lv.word} $${cost.toFixed(2)}`.length
-  const optional = [modelName(model), branch ? fit(branch, 12, W * 0.25) : ''].filter(Boolean)
-  const widthOf = (parts: string[]) => (headChars + parts.join('').length) * 7 + 22 + parts.length * 16
+  const slotW = (s: (typeof slots)[number]): number =>
+    textW(s.label) + 6 + (on.has('bars') ? BAR_W + 6 : 0) + textW(s.pct, true) + (on.has('resets') && s.reset ? 6 + textW(s.reset) : 0)
+  const rightW = (): number => slots.reduce((sum, s) => sum + slotW(s), 0) + 16 * (slots.length - 1)
+  const leftW = (): number =>
+    (on.has('strip') ? STRIP_MIN + 10 : 0) +
+    textW(head, true) +
+    (on.has('word') ? 6 + textW(lv.word) : 0) +
+    (on.has('cost') ? 16 + textW(money) : 0) +
+    (on.has('model') ? 16 + textW(name) : 0) +
+    (on.has('branch') ? 16 + textW(br) : 0)
+  const need = (): number => leftW() + 16 + rightW()
+  for (const part of DROP_ORDER) if (need() > W) on.delete(part)
 
-  // The strip shrinks first to keep the model and branch, then gives way to the slots and the head figures.
-  const spare = slotsX - widthOf(optional) - 26
-  const room = W - SLOT * BAND_LIMITS.length - 200
-  const stripW = spare >= 80 ? Math.min(160, spare) : room >= 40 ? Math.min(160, room) : 0
+  const stripW = on.has('strip') ? Math.min(160, STRIP_MIN + W - need()) : 0
   const sx = isLeft ? HEART_W : 0
   const sw = stripW - sx
-  const strip =
-    stripW > 0
-      ? (isLeft ? heart(0, 7, 12) : '') + gauge(sx, 6, sw, 12, shownPct(c.percent, isLeft), lv.color, 10, isLeft) + compactMark(sx, 6, sw, 12, c, isLeft, false)
-      : ''
+  const strip = stripW
+    ? (isLeft ? heart(0, 7, 12) : '') + gauge(sx, 6, sw, 12, shownPct(c.percent, isLeft), lv.color, 10, isLeft) + compactMark(sx, 6, sw, 12, c, isLeft, false)
+    : ''
   const x0 = stripW ? stripW + 10 : 0
+  const tail = [on.has('model') ? name : '', on.has('branch') ? br : ''].filter(Boolean)
+  const left =
+    `<text x="${x0}" y="16" font-size="12"><tspan class="i" font-weight="600">${head}</tspan>` +
+    (on.has('word') ? `<tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan>` : '') +
+    (on.has('cost') ? `<tspan dx="16" class="i">${money}</tspan>` : '') +
+    tail.map(p => `<tspan dx="16" class="m">${xml(p)}</tspan>`).join('') +
+    '</text>'
 
-  // Optional parts drop from the end until the left side clears the usage slots.
-  while (optional.length && x0 + widthOf(optional) + 16 > slotsX) optional.pop()
-  const tail = optional.map(p => `<tspan dx="16" class="m">${xml(p)}</tspan>`).join('')
-  return svg(W, 24, `${strip}<text x="${x0}" y="16" font-size="12">${head}${tail}</text>${slots}`)
+  let x = W - rightW()
+  const right = slots
+    .map(s => {
+      const pct = s.l ? Math.max(0, Math.min(100, s.l.percentUsed)) : 0
+      let out = t(x, 16, 'm', 12, s.label)
+      let px = x + textW(s.label) + 6
+      if (on.has('bars')) {
+        out += gauge(px, 8, BAR_W, 8, s.l ? shownPct(pct, isLeft) : 0, levelOf(pct).color, 5, isLeft)
+        px += BAR_W + 6
+      }
+      out += t(px, 16, 'i', 12, s.pct, ' font-weight="600"')
+      if (on.has('resets') && s.reset) out += t(px + textW(s.pct, true) + 6, 16, 'm', 12, s.reset)
+      x += slotW(s) + 16
+      return out
+    })
+    .join('')
+  return svg(W, 24, `${strip}${left}${right}`)
 }
