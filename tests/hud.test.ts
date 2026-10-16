@@ -258,7 +258,7 @@ test('a narrow band keeps every text inside its width, without overlap', () => {
     { kind: 'seven_day', percentUsed: 77, resetsAt: '2026-10-20T08:00:00Z' },
   ]
   for (const isLeft of [false, true])
-    for (const W of [240, 300, 420, 600, 900]) {
+    for (const W of [240, 330, 420, 600, 900]) {
       const band = bandSvg(W, 'claude-opus-5-5', { percent: 22, tokens: 220_000, window: 1_000_000 }, 5.12, 'feature/long-branch-name', limits, isLeft, now)
       const xs = [...band.matchAll(/<text[^>]* x="([\d.]+)"[^>]*>(.*?)<\/text>/g)].map(m => ({ x: Number(m[1]), text: (m[2] ?? '').replace(/<[^>]+>/g, '') }))
       // The head text block comes first, then each slot's label, share and reset in order: each must start past the last one's end.
@@ -267,8 +267,10 @@ test('a narrow band keeps every text inside its width, without overlap', () => {
       for (let i = 2; i < xs.length; i++) expect(xs[i]!.x).toBeGreaterThanOrEqual(xs[i - 1]!.x + xs[i - 1]!.text.length * 6.5)
       const last = xs[xs.length - 1]!
       expect(last.x + last.text.length * 6.5).toBeLessThanOrEqual(W + 0.5)
-      if (W >= (isLeft ? 420 : 300)) expect(band).toContain(`↻${fmtClock(Date.parse(fiveH))}`)
+      if (W >= (isLeft ? 420 : 330)) expect(band).toContain(`↻${fmtClock(Date.parse(fiveH))}`)
       if (W >= 900) expect(band).toContain('Opus 5.5')
+      // Without the context bar, a label must say which share the first number is.
+      if (W >= 330) expect(band.includes('>ctx<')).toBe(band.indexOf('class="gf"') === -1)
     }
 })
 

@@ -230,9 +230,9 @@ const textW = (s: string, isBold = false): number =>
   [...s].reduce((w, ch) => w + (' :.,ilt|'.includes(ch) ? 3.5 : ch === '↻' ? 12 : '%MW—'.includes(ch) ? 11 : /[A-Z]/.test(ch) ? 8 : 7), 0) * (isBold ? 1.08 : 1)
 const STRIP_MIN = 80
 
-type BandPart = 'branch' | 'model' | 'strip' | 'word' | 'cost' | 'resets'
+type BandPart = 'branch' | 'model' | 'strip' | 'word' | 'cost' | 'resets' | 'ctx'
 // The band drops parts in this order until it fits; the context share and both usage shares always stay.
-const DROP_ORDER: BandPart[] = ['branch', 'model', 'strip', 'word', 'cost', 'resets']
+const DROP_ORDER: BandPart[] = ['branch', 'model', 'strip', 'word', 'cost', 'resets', 'ctx']
 
 export const bandSvg = (W: number, model: string, c: ContextFigures, cost: number, branch: string, limits: Limit[], isLeft = false, now = 0): string => {
   const lv = levelOf(c.percent)
@@ -251,7 +251,7 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
     textW(s.label) + 6 + textW(s.pct, true) + (on.has('resets') && s.reset ? 6 + textW(s.reset) : 0)
   const rightW = (): number => slots.reduce((sum, s) => sum + slotW(s), 0) + 16 * (slots.length - 1)
   const leftW = (): number =>
-    (on.has('strip') ? STRIP_MIN + 10 : 0) +
+    (on.has('strip') ? STRIP_MIN + 10 : on.has('ctx') ? textW('ctx') + 6 : 0) +
     textW(head, true) +
     (on.has('word') ? 6 + textW(lv.word) : 0) +
     (on.has('cost') ? 16 + textW(money) : 0) +
@@ -267,9 +267,13 @@ export const bandSvg = (W: number, model: string, c: ContextFigures, cost: numbe
     ? (isLeft ? heart(0, 7, 12) : '') + gauge(sx, 6, sw, 12, shownPct(c.percent, isLeft), lv.color, 10, isLeft) + compactMark(sx, 6, sw, 12, c, isLeft, false)
     : ''
   const x0 = stripW ? stripW + 10 : 0
+  const label = !stripW && on.has('ctx')
   const tail = [on.has('model') ? name : '', on.has('branch') ? br : ''].filter(Boolean)
   const left =
-    `<text x="${x0}" y="16" font-size="12"><tspan class="i" font-weight="600">${head}</tspan>` +
+    `<text x="${x0}" y="16" font-size="12">` +
+    // Without the bar, a label says what the first share is, as 5h and Week do for theirs.
+    (label ? '<tspan class="m">ctx</tspan>' : '') +
+    `<tspan${label ? ' dx="6"' : ''} class="i" font-weight="600">${head}</tspan>` +
     (on.has('word') ? `<tspan dx="6" style="fill:${lv.color}">${lv.word}</tspan>` : '') +
     (on.has('cost') ? `<tspan dx="16" class="i">${money}</tspan>` : '') +
     tail.map(p => `<tspan dx="16" class="m">${xml(p)}</tspan>`).join('') +
